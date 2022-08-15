@@ -81,9 +81,11 @@ export class SolanaDevnetService implements ChainIntegration {
           chainStroyId: storyId.toString(),
         });
         if (existed) {
-          await this.syncPublishedStory(storyId);
-        } else {
+          this._logger.log(`updated story ${storyId}`);
           await this.syncUpdatedStory(storyId);
+        } else {
+          this._logger.log(`new published story ${storyId}`);
+          await this.syncPublishedStory(storyId);
         }
       } catch (err) {
         this._logger.error(err);
@@ -110,7 +112,6 @@ export class SolanaDevnetService implements ChainIntegration {
             chain: this.chain,
             chainStoryId: storyId.toString(),
             nftSaleAddr: mintStateAddr.toString(),
-
             total: smallBN2Number(mintState.total),
             price: smallBN2Number(mintState.price),
             sold: smallBN2Number(mintState.sold),
@@ -284,7 +285,10 @@ export class SolanaDevnetService implements ChainIntegration {
 
     const toSave: Parameters<StoryService['createNftSales']>[0] = [];
     for (let id = 1; id < nextId; id++) {
-      if (existedSaleStoryIdArr.includes(id)) continue;
+      this._logger.debug(`check story ${id} mintState`);
+      if (existedSaleStoryIdArr.includes(id)) {
+        continue;
+      }
       const mintStateAddr = await this._getStoryNftSaleAddr(new BN(id));
       let mintState;
       try {
@@ -348,7 +352,9 @@ export class SolanaDevnetService implements ChainIntegration {
 
   private async syncPublishedStory(storyId: number) {
     const storyAddr = await this._getStoryAddr(new BN(storyId));
+
     const storyData = await this._program.account.story.fetch(storyAddr);
+    console.log(storyData);
 
     const storyInfo = {
       chain: this.chain,
@@ -359,8 +365,6 @@ export class SolanaDevnetService implements ChainIntegration {
     };
 
     await this._storySvc.createStories([storyInfo]);
-
-    // TODO 添加该本故事的监听
   }
 
   private async syncUpdatedStory(storyId: number) {
