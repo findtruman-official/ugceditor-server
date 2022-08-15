@@ -9,7 +9,7 @@ import { StoriesResolver } from './resolvers/stories.resolver';
 import { StoryInfosResolver } from './resolvers/story-infos.resolver';
 import { UsersResolver } from './resolvers/user.resolver';
 import { StoryChaptersResolver } from './resolvers/story-chapters.resolver';
-
+import { NftSalesResolver } from './resolvers/nft-sale.resolver';
 @Module({
   imports: [ChainModule, StoryModule, LoginModule, IpfsModule],
   providers: [
@@ -19,6 +19,7 @@ import { StoryChaptersResolver } from './resolvers/story-chapters.resolver';
     UsersResolver,
     StoryInfosResolver,
     StoryChaptersResolver,
+    NftSalesResolver,
   ],
 })
 export class GqlModule {}

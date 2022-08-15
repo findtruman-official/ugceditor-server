@@ -1,14 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import { decodeUTF8, decodeBase64 } from 'tweetnacl-util';
 // import borsh from '@project-serum/borsh';
-import { BorshCoder, utils, BN } from '@project-serum/anchor';
+import {
+  BorshCoder,
+  utils,
+  BN,
+  Program,
+  AnchorProvider,
+  Wallet,
+} from '@project-serum/anchor';
 
 import IDL from './solana-program.idl.json';
 import { StoryService } from 'src/story/story.service';
 import { NftType } from 'src/story/entities/nft-sale.entity';
 import { ConfigService } from '@nestjs/config';
+import { SolanaPrograms } from './solana-program';
 
 @Injectable()
 export class SolanaDevnetService implements ChainIntegration {
@@ -23,6 +31,7 @@ export class SolanaDevnetService implements ChainIntegration {
   private _programId: PublicKey = null;
   private _storyFactoryAddr: PublicKey = null;
   private _coder = new BorshCoder(IDL as any);
+  private _program: Program<SolanaPrograms> = null;
 
   constructor(
     private readonly _storySvc: StoryService,
@@ -42,6 +51,12 @@ export class SolanaDevnetService implements ChainIntegration {
 
     this.findsAddress = this._configSvc.get('SOLANA_DEVNET_FINDS_ADDRESS');
 
+    this._program = new Program<SolanaPrograms>(
+      IDL as any,
+      this._programId,
+      new AnchorProvider(this._conn, new Wallet(Keypair.generate()), {}),
+    );
+
     if (!enableSync) return;
     // // 1. 启动监听
     // // 2. 从最近监听到的高度开始获取有关tx,并解析data (此时实时监听到的内容放入一个独立队列)
@@ -56,35 +71,136 @@ export class SolanaDevnetService implements ChainIntegration {
     // NFT发布/铸造: 轮询 各个Story对应的Book Account及其他.
     //
     // 方案二 消费实时Log + 长间隔轮询(实时Log不能保障一定消费到消息)
+
+    this._program.addEventListener('StoryUpdated', async (event, slot, sig) => {
+      try {
+        const storyId = smallBN2Number(event.id);
+        this._logger.log(`Story Updated: ${storyId} ${slot} ${sig}`);
+        const existed = await this._storySvc.getStory({
+          chain: this.chain,
+          chainStroyId: storyId.toString(),
+        });
+        if (existed) {
+          await this.syncPublishedStory(storyId);
+        } else {
+          await this.syncUpdatedStory(storyId);
+        }
+      } catch (err) {
+        this._logger.error(err);
+        this._logger.error(
+          `failed to handle StoryUpdated: ${event.id.toString()} ${slot} ${sig}`,
+        );
+      }
+    });
+
+    this._program.addEventListener(
+      'StoryNftPublished',
+      async (event, slot, sig) => {
+        try {
+          const storyId = smallBN2Number(event.id);
+          this._logger.log(`Story Nft Published: ${storyId} ${slot} ${sig}`);
+          const mintStateAddr = await this._getStoryNftSaleAddr(
+            new BN(storyId),
+          );
+          let mintState = await this._program.account.storyNftMintState.fetch(
+            mintStateAddr,
+          );
+
+          const obj = {
+            chain: this.chain,
+            chainStoryId: storyId.toString(),
+            nftSaleAddr: mintStateAddr.toString(),
+
+            total: smallBN2Number(mintState.total),
+            price: smallBN2Number(mintState.price),
+            sold: smallBN2Number(mintState.sold),
+            authorReserved: smallBN2Number(mintState.authorReserved),
+            authorClaimed: smallBN2Number(mintState.authorClaimed),
+            uriPrefix: mintState.uriPrefix,
+            name: mintState.title,
+            type: NftType.NON_FUNGIBLE_TOKEN,
+          };
+
+          await this._storySvc.createNftSales([obj]);
+        } catch (err) {
+          this._logger.error(err);
+          this._logger.error(
+            `failed to handle StoryNftPublished: ${event.id.toString()} ${slot} ${sig}`,
+          );
+        }
+      },
+    );
+
+    this._program.addEventListener('NftMinted', async (event, slot, sig) => {
+      try {
+        const storyId = smallBN2Number(event.storyId);
+        const mintAddr = smallBN2Number(event.mint);
+        this._logger.log(
+          `Story Nft Minted: ${storyId} ${mintAddr.toString()} ${slot} ${sig}`,
+        );
+
+        const mintStateAddr = await this._getStoryNftSaleAddr(new BN(storyId));
+        const mintState = await this._program.account.storyNftMintState.fetch(
+          mintStateAddr,
+        );
+
+        const sale = await this._storySvc.getStoryNftSale({
+          chain: this.chain,
+          chainStoryId: storyId.toString(),
+        });
+
+        Object.assign(sale, {
+          total: smallBN2Number(mintState.total),
+          price: smallBN2Number(mintState.price),
+          sold: smallBN2Number(mintState.sold),
+          authorReserved: smallBN2Number(mintState.authorReserved),
+          authorClaimed: smallBN2Number(mintState.authorClaimed),
+          name: mintState.title,
+          type: NftType.NON_FUNGIBLE_TOKEN,
+        });
+
+        await this._storySvc.updateNftSales([sale]);
+      } catch (err) {
+        this._logger.error(err);
+        this._logger.error(
+          `failed to handle NftMinted: ${event.storyId.toString()} ${event.mint.toString()} ${slot} ${sig}`,
+        );
+      }
+    });
+
     this._loops({
       title: 'Scan New Stories',
       func: this._scanNewlyStory.bind(this),
-      interval: 8,
+      interval: 3600,
     });
 
     this._loops({
       title: 'Scan Updated Stories',
       func: this._scanUpdatedStory.bind(this),
-      interval: 70,
+      interval: 3600 * 2,
     });
 
     this._loops({
       title: 'Scan Published Story Nft Sales',
       func: this._scanPublishedNftSale.bind(this),
-      interval: 6,
+      interval: 3600,
     });
 
     this._loops({
       title: 'Scan Updated Story Nft Sales',
       func: this._scanUpdatedNftSale.bind(this),
-      interval: 60,
+      interval: 1800,
     });
   }
 
   private async _scanNewlyStory() {
-    const info = await this._conn.getAccountInfo(this._storyFactoryAddr);
+    const factory = await this._program.account.storyFactory.fetch(
+      this._storyFactoryAddr,
+    );
 
-    const factory = this._coder.accounts.decode('StoryFactory', info.data);
+    // const info = await this._conn.getAccountInfo(this._storyFactoryAddr);
+
+    // const factory = this._coder.accounts.decode('StoryFactory', info.data);
 
     const existedStories = await this._storySvc.listStories({
       chain: [this.chain],
@@ -100,10 +216,11 @@ export class SolanaDevnetService implements ChainIntegration {
       }
       this._logger.log(`new story ${id}`);
       const storyAddr = await this._getStoryAddr(new BN(id));
-      const storyData = this._coder.accounts.decode(
-        'Story',
-        (await this._conn.getAccountInfo(storyAddr)).data,
-      );
+      const storyData = await this._program.account.story.fetch(storyAddr);
+      // const storyData = this._coder.accounts.decode(
+      //   'Story',
+      //   (await this._conn.getAccountInfo(storyAddr)).data,
+      // );
 
       storyInfos.push({
         chain: this.chain,
@@ -125,12 +242,15 @@ export class SolanaDevnetService implements ChainIntegration {
     }[] = [];
 
     for (const story of stories) {
-      const storyData = this._coder.accounts.decode(
-        'Story',
-        (await this._conn.getAccountInfo(new PublicKey(story.onChainAddr)))
-          .data,
+      const storyData = await this._program.account.story.fetch(
+        story.onChainAddr,
       );
-      console.log(story.chainStoryId, story.contentHash, storyData.cid);
+      // const storyData = this._coder.accounts.decode(
+      //   'Story',
+      //   (await this._conn.getAccountInfo(new PublicKey(story.onChainAddr)))
+      //     .data,
+      // );
+      // console.log(story.chainStoryId, story.contentHash, storyData.cid);
       if (story.contentHash !== storyData.cid) {
         toUpdate.push({
           chain: story.chain,
@@ -153,22 +273,27 @@ export class SolanaDevnetService implements ChainIntegration {
       parseInt(sale.chainStoryId),
     );
 
-    const info = await this._conn.getAccountInfo(
-      new PublicKey(this._storyFactoryAddr),
+    // const info = await this._conn.getAccountInfo(
+    //   new PublicKey(this._storyFactoryAddr),
+    // );
+    // const factory = this._coder.accounts.decode('StoryFactory', info.data);
+    const factory = await this._program.account.storyFactory.fetch(
+      this._storyFactoryAddr,
     );
-    const factory = this._coder.accounts.decode('StoryFactory', info.data);
     const nextId = parseInt(factory.nextId.toString());
 
     const toSave: Parameters<StoryService['createNftSales']>[0] = [];
     for (let id = 1; id < nextId; id++) {
       if (existedSaleStoryIdArr.includes(id)) continue;
       const mintStateAddr = await this._getStoryNftSaleAddr(new BN(id));
-      const mintStateInfo = await this._conn.getAccountInfo(mintStateAddr);
-      if (!mintStateInfo) continue;
-      const mintState = this._coder.accounts.decode(
-        'StoryNftMintState',
-        mintStateInfo.data,
-      );
+      let mintState;
+      try {
+        mintState = await this._program.account.storyNftMintState.fetch(
+          mintStateAddr,
+        );
+      } catch (err) {
+        continue;
+      }
 
       toSave.push({
         chain: this.chain,
@@ -181,7 +306,7 @@ export class SolanaDevnetService implements ChainIntegration {
         authorReserved: smallBN2Number(mintState.authorReserved),
         authorClaimed: smallBN2Number(mintState.authorClaimed),
         uriPrefix: mintState.uriPrefix,
-        name: mintState.description,
+        name: mintState.title,
         type: NftType.NON_FUNGIBLE_TOKEN,
       });
     }
@@ -221,6 +346,36 @@ export class SolanaDevnetService implements ChainIntegration {
     await this._storySvc.updateNftSales(toUpdate);
   }
 
+  private async syncPublishedStory(storyId: number) {
+    const storyAddr = await this._getStoryAddr(new BN(storyId));
+    const storyData = await this._program.account.story.fetch(storyAddr);
+
+    const storyInfo = {
+      chain: this.chain,
+      chainStoryId: storyId.toString(),
+      author: storyData.author.toString(),
+      onChainAddr: storyAddr.toString(),
+      contentHash: storyData.cid,
+    };
+
+    await this._storySvc.createStories([storyInfo]);
+
+    // TODO 添加该本故事的监听
+  }
+
+  private async syncUpdatedStory(storyId: number) {
+    const storyAddr = await this._getStoryAddr(new BN(storyId));
+    const storyData = await this._program.account.story.fetch(storyAddr);
+
+    await this._storySvc.updateStoriesContentHash([
+      {
+        chain: this.chain,
+        chainStoryId: storyId.toString(),
+        contentHash: storyData.cid,
+      },
+    ]);
+  }
+
   private async _loops(params: {
     func: () => Promise<any>;
     interval: number;
@@ -228,9 +383,9 @@ export class SolanaDevnetService implements ChainIntegration {
   }) {
     while (true) {
       try {
-        // this._logger.debug(`start ${params.title}`);
+        this._logger.debug(`start ${params.title}`);
         await params.func();
-        // this._logger.debug(`finish ${params.title}`);
+        this._logger.debug(`finish ${params.title}`);
       } catch (err) {
         this._logger.error(`run '${params.title}' failed`, err);
       }

@@ -43,12 +43,12 @@ export class IpfsController {
 
   @Get('json/:cid')
   async getJson(@Param('cid') cid: string) {
-    return await this.ipfsSvc.loadJson(cid);
+    return await this.ipfsSvc.loadJson(decodeURIComponent(cid));
   }
 
   @Get('file/:cid')
   async getFile(@Res() res: Response, @Param('cid') cid: string) {
-    const content = await this.ipfsSvc.loadFile(cid);
+    const content = await this.ipfsSvc.loadFile(decodeURIComponent(cid));
 
     const buffer = Buffer.from(content);
 

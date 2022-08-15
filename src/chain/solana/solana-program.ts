@@ -136,15 +136,11 @@ export type SolanaPrograms = {
           type: 'u64';
         },
         {
-          name: 'image';
-          type: 'string';
-        },
-        {
           name: 'title';
           type: 'string';
         },
         {
-          name: 'description';
+          name: 'uriPrefix';
           type: 'string';
         },
       ];
@@ -307,11 +303,7 @@ export type SolanaPrograms = {
             type: 'u64';
           },
           {
-            name: 'image';
-            type: 'string';
-          },
-          {
-            name: 'description';
+            name: 'uriPrefix';
             type: 'string';
           },
           {
@@ -507,15 +499,11 @@ export const IDL: SolanaPrograms = {
           type: 'u64',
         },
         {
-          name: 'image',
-          type: 'string',
-        },
-        {
           name: 'title',
           type: 'string',
         },
         {
-          name: 'description',
+          name: 'uriPrefix',
           type: 'string',
         },
       ],
@@ -678,11 +666,7 @@ export const IDL: SolanaPrograms = {
             type: 'u64',
           },
           {
-            name: 'image',
-            type: 'string',
-          },
-          {
-            name: 'description',
+            name: 'uriPrefix',
             type: 'string',
           },
           {

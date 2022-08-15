@@ -136,15 +136,11 @@
           "type": "u64"
         },
         {
-          "name": "image",
-          "type": "string"
-        },
-        {
           "name": "title",
           "type": "string"
         },
         {
-          "name": "description",
+          "name": "uriPrefix",
           "type": "string"
         }
       ]
@@ -307,11 +303,7 @@
             "type": "u64"
           },
           {
-            "name": "image",
-            "type": "string"
-          },
-          {
-            "name": "description",
+            "name": "uriPrefix",
             "type": "string"
           },
           {
