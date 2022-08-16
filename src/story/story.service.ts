@@ -198,7 +198,8 @@ export class StoryService {
           obj.name !== data.name ||
           obj.total !== data.total ||
           obj.sold !== data.sold ||
-          obj.type !== data.price
+          obj.price !== data.price ||
+          obj.type !== data.type
         ) {
           Object.assign(obj, data);
           toSave.push(obj);

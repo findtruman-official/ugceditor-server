@@ -31,7 +31,7 @@ export class NftSale {
   type: NftType;
 
   @Column()
-  price: number;
+  price: string;
 
   @Column()
   total: number;

@@ -25,8 +25,8 @@ export class NftSale {
   @Field()
   type: NftType;
 
-  @Field(() => Int)
-  price: number;
+  @Field()
+  price: string;
 
   @Field(() => Int)
   total: number;

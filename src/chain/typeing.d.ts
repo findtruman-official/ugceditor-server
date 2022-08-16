@@ -73,7 +73,7 @@ type NftSale = {
   name: string;
   uriPrefix: string;
   type: '721';
-  price: number;
+  price: string;
   total: number;
   authorReserved: number;
   sold: number;

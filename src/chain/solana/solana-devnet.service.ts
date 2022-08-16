@@ -113,7 +113,7 @@ export class SolanaDevnetService implements ChainIntegration {
             chainStoryId: storyId.toString(),
             nftSaleAddr: mintStateAddr.toString(),
             total: smallBN2Number(mintState.total),
-            price: smallBN2Number(mintState.price),
+            price: mintState.price.toString(),
             sold: smallBN2Number(mintState.sold),
             authorReserved: smallBN2Number(mintState.authorReserved),
             authorClaimed: smallBN2Number(mintState.authorClaimed),
@@ -237,7 +237,7 @@ export class SolanaDevnetService implements ChainIntegration {
     return sale
       ? {
           name: sale.title,
-          price: smallBN2Number(sale.price),
+          price: sale.price.toString(),
           sold: smallBN2Number(sale.sold),
           authorClaimed: smallBN2Number(sale.authorClaimed),
           authorReserved: smallBN2Number(sale.authorReserved),
@@ -345,22 +345,18 @@ export class SolanaDevnetService implements ChainIntegration {
         continue;
       }
       const mintStateAddr = await this._getStoryNftSaleAddr(new BN(id));
-      let mintState;
-      try {
-        mintState = await this._program.account.storyNftMintState.fetch(
+      let mintState =
+        await this._program.account.storyNftMintState.fetchNullable(
           mintStateAddr,
         );
-      } catch (err) {
-        continue;
-      }
-
+      if (!mintState) continue;
       toSave.push({
         chain: this.chain,
         chainStoryId: id.toString(),
         nftSaleAddr: mintStateAddr.toString(),
 
         total: smallBN2Number(mintState.total),
-        price: smallBN2Number(mintState.price),
+        price: mintState.price.toString(),
         sold: smallBN2Number(mintState.sold),
         authorReserved: smallBN2Number(mintState.authorReserved),
         authorClaimed: smallBN2Number(mintState.authorClaimed),
@@ -383,21 +379,28 @@ export class SolanaDevnetService implements ChainIntegration {
       const mintStateAddr = await this._getStoryNftSaleAddr(
         new BN(parseInt(sale.chainStoryId)),
       );
-      const mintStateInfo = await this._conn.getAccountInfo(mintStateAddr);
-      if (!mintStateInfo) continue; // maybe program closed
-      const mintState = this._coder.accounts.decode(
-        'StoryNftMintState',
-        mintStateInfo.data,
-      );
+      // const mintStateInfo = await this._conn.getAccountInfo(mintStateAddr);
+      // if (!mintStateInfo) continue; // maybe program closed
+      // const mintState = this._coder.accounts.decode(
+      //   'StoryNftMintState',
+      //   mintStateInfo.data,
+      // );
+      const mintState =
+        await this._program.account.storyNftMintState.fetchNullable(
+          mintStateAddr,
+        );
+      // console.log();
+      // console.log(mintState);
+      if (!mintState) continue;
       Object.assign(sale, {
         total: smallBN2Number(mintState.total),
-        price: smallBN2Number(mintState.price),
+        price: mintState.price.toString(),
         sold: smallBN2Number(mintState.sold),
         authorReserved: smallBN2Number(mintState.authorReserved),
         authorClaimed: smallBN2Number(mintState.authorClaimed),
-        image: mintState.image,
-        description: mintState.description,
-        name: mintState.description,
+        // image: mintState.,
+        // description: mintState.,
+        name: mintState.title,
         type: NftType.NON_FUNGIBLE_TOKEN,
       });
       toUpdate.push(sale);
