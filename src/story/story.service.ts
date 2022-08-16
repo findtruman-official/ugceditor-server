@@ -72,12 +72,12 @@ export class StoryService {
 
   async getStory(params: {
     chain: string;
-    chainStroyId: string;
+    chainStoryId: string;
   }): Promise<Story | null> {
     return await this.storyRepo.findOne({
       where: {
         chain: params.chain,
-        chainStoryId: params.chainStroyId,
+        chainStoryId: params.chainStoryId,
       },
     });
   }

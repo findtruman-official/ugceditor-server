@@ -76,6 +76,18 @@ export class ChainService {
     return integr.formatGeneralMetadatas(items);
   }
 
+  async getStory(chain: string, chainStoryId: string): Promise<Story> {
+    const integr = this._getChainIntegr(chain);
+    if (!integr) return null;
+    return await integr.getStory(chainStoryId);
+  }
+
+  async getStoryNftSale(chain: string, chainStoryId: string): Promise<NftSale> {
+    const integr = this._getChainIntegr(chain);
+    if (!integr) return null;
+    return await integr.getStoryNftSale(chainStoryId);
+  }
+
   private _getChainIntegr(chain: string): ChainIntegration | undefined {
     const chainIntegr = this._chains[chain];
     if (!chainIntegr) {

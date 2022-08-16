@@ -29,4 +29,13 @@ export class TezosGhostTestnetService implements ChainIntegration {
     // TODO transform nft metatdata to tezos standard
     return [];
   }
+
+  async getStory(chainStoryId: string): Promise<Story> {
+    // TODO
+    return null;
+  }
+  async getStoryNftSale(chainStoryId: string): Promise<NftSale> {
+    // TODO
+    return null;
+  }
 }

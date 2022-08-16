@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   Args,
   Int,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/graphql';
 import { ChainService } from 'src/chain/chain.service';
 import { IpfsService } from 'src/ipfs/ipfs.service';
+import { NftType } from 'src/story/entities/nft-sale.entity';
 import { StoryService, StorySort } from 'src/story/story.service';
 import { Chain } from '../models/chain.model';
 import { IpfsResult } from '../models/ipfs-result.model';
@@ -24,6 +26,7 @@ registerEnumType(StorySort, {
 
 @Resolver(() => Story)
 export class StoriesResolver {
+  private _logger = new Logger(StoriesResolver.name);
   constructor(
     private readonly _chainSvc: ChainService,
     private readonly _storySvc: StoryService,
@@ -69,6 +72,104 @@ export class StoriesResolver {
     };
   }
 
+  @Mutation(() => Story, {
+    name: 'syncStoryContentHash',
+    nullable: true,
+    description: 'returns null if no story on chain.',
+  })
+  async mutSyncStoryContentHash(
+    @Args('chain') chain: string,
+    @Args('chainStoryId') chainStoryId: string,
+  ): Promise<Story> {
+    this._logger.debug(`sync story content hash: ${chain} ${chainStoryId}`);
+    const storyObj = await this._storySvc.getStory({
+      chain,
+      chainStoryId,
+    });
+
+    const story = await this._chainSvc.getStory(chain, chainStoryId);
+    if (!story) return null;
+    if (storyObj) {
+      const updatedStory = await this._storySvc.updateStoriesContentHash([
+        {
+          chain,
+          chainStoryId,
+          contentHash: story.cid,
+        },
+      ]);
+      if (updatedStory.length > 0) {
+        return updatedStory[0];
+      } else {
+        return storyObj;
+      }
+    } else {
+      const [createdStoryObj] = await this._storySvc.createStories([
+        {
+          chain,
+          chainStoryId,
+          contentHash: story.cid,
+          onChainAddr: story.addr,
+          author: story.author,
+        },
+      ]);
+      return createdStoryObj;
+    }
+  }
+
+  @Mutation(() => Story, {
+    name: 'syncStoryNftSale',
+    nullable: true,
+    description: 'returns null if no story nft sale on chain.',
+  })
+  async mutSyncStoryNftSale(
+    @Args('chain') chain: string,
+    @Args('chainStoryId') chainStoryId: string,
+  ): Promise<NftSale> {
+    this._logger.debug(`sync story nft sale: ${chain} ${chainStoryId}`);
+    const obj = await this._storySvc.getStoryNftSale({
+      chain,
+      chainStoryId,
+    });
+
+    const sale = await this._chainSvc.getStoryNftSale(chain, chainStoryId);
+    if (!sale) return null;
+    if (obj) {
+      const updatedObj = await this._storySvc.updateNftSales([
+        {
+          chain,
+          chainStoryId,
+          nftSaleAddr: sale.saleAddr,
+          total: sale.total,
+          type: NftType.NON_FUNGIBLE_TOKEN, // TODO 1155 ....
+          name: sale.name,
+          uriPrefix: sale.uriPrefix,
+          price: sale.price,
+          authorClaimed: sale.authorClaimed,
+          authorReserved: sale.authorReserved,
+          sold: sale.sold,
+        },
+      ]);
+      return updatedObj.length > 0 ? updatedObj[0] : obj;
+    } else {
+      const [createdObj] = await this._storySvc.createNftSales([
+        {
+          chain,
+          chainStoryId,
+          nftSaleAddr: sale.saleAddr,
+          total: sale.total,
+          type: NftType.NON_FUNGIBLE_TOKEN, // TODO 1155 ....
+          name: sale.name,
+          uriPrefix: sale.uriPrefix,
+          price: sale.price,
+          authorClaimed: sale.authorClaimed,
+          authorReserved: sale.authorReserved,
+          sold: sale.sold,
+        },
+      ]);
+      return createdObj;
+    }
+  }
+
   @Query(() => [Story], {
     name: 'stories',
   })
@@ -89,7 +190,7 @@ export class StoriesResolver {
     @Args('chain') chain: string,
     @Args('chainStoryId') chainStroyId: string,
   ): Promise<Story> {
-    return await this._storySvc.getStory({ chain, chainStroyId });
+    return await this._storySvc.getStory({ chain, chainStoryId: chainStroyId });
   }
 
   @Query(() => StoryChapter, {

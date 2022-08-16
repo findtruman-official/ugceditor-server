@@ -78,14 +78,14 @@ export class SolanaDevnetService implements ChainIntegration {
         this._logger.log(`Story Updated: ${storyId} ${slot} ${sig}`);
         const existed = await this._storySvc.getStory({
           chain: this.chain,
-          chainStroyId: storyId.toString(),
+          chainStoryId: storyId.toString(),
         });
         if (existed) {
           this._logger.log(`updated story ${storyId}`);
-          await this.syncUpdatedStory(storyId);
+          await this._syncUpdatedStory(storyId);
         } else {
           this._logger.log(`new published story ${storyId}`);
-          await this.syncPublishedStory(storyId);
+          await this._syncPublishedStory(storyId);
         }
       } catch (err) {
         this._logger.error(err);
@@ -192,6 +192,61 @@ export class SolanaDevnetService implements ChainIntegration {
       func: this._scanUpdatedNftSale.bind(this),
       interval: 1800,
     });
+  }
+
+  async isValidSignature(params: IsValidSignatureParams): Promise<boolean> {
+    return nacl.sign.detached.verify(
+      decodeUTF8(params.message),
+      decodeBase64(params.signature),
+      new PublicKey(params.account).toBytes(),
+    );
+  }
+
+  async formatGeneralMetadatas(
+    metadatas: GeneralMetadata[],
+  ): Promise<MetadataJsonFile[]> {
+    return metadatas.map((md) => ({
+      item: md,
+      json: {
+        name: md.name,
+        symbol: 'Story',
+        description: md.description,
+        image: md.image,
+      },
+    }));
+  }
+
+  async getStory(chainStoryId: string): Promise<Story> {
+    const storyAddr = await this._getStoryAddr(new BN(chainStoryId));
+    const story = await this._program.account.story.fetchNullable(storyAddr);
+    return story
+      ? {
+          id: story.id.toString(),
+          cid: story.cid,
+          author: story.author.toString(),
+          addr: storyAddr.toString(),
+        }
+      : null;
+  }
+
+  async getStoryNftSale(chainStoryId: string): Promise<NftSale> {
+    const addr = await this._getStoryNftSaleAddr(new BN(chainStoryId));
+    const sale = await this._program.account.storyNftMintState.fetchNullable(
+      addr,
+    );
+    return sale
+      ? {
+          name: sale.title,
+          price: smallBN2Number(sale.price),
+          sold: smallBN2Number(sale.sold),
+          authorClaimed: smallBN2Number(sale.authorClaimed),
+          authorReserved: smallBN2Number(sale.authorReserved),
+          saleAddr: addr.toString(),
+          uriPrefix: sale.uriPrefix,
+          type: '721',
+          total: smallBN2Number(sale.total),
+        }
+      : null;
   }
 
   private async _scanNewlyStory() {
@@ -350,7 +405,7 @@ export class SolanaDevnetService implements ChainIntegration {
     await this._storySvc.updateNftSales(toUpdate);
   }
 
-  private async syncPublishedStory(storyId: number) {
+  private async _syncPublishedStory(storyId: number) {
     const storyAddr = await this._getStoryAddr(new BN(storyId));
 
     const storyData = await this._program.account.story.fetch(storyAddr);
@@ -367,7 +422,7 @@ export class SolanaDevnetService implements ChainIntegration {
     await this._storySvc.createStories([storyInfo]);
   }
 
-  private async syncUpdatedStory(storyId: number) {
+  private async _syncUpdatedStory(storyId: number) {
     const storyAddr = await this._getStoryAddr(new BN(storyId));
     const storyData = await this._program.account.story.fetch(storyAddr);
 
@@ -397,28 +452,6 @@ export class SolanaDevnetService implements ChainIntegration {
         await new Promise((res) => setTimeout(res, params.interval * 1000));
       }
     }
-  }
-
-  async isValidSignature(params: IsValidSignatureParams): Promise<boolean> {
-    return nacl.sign.detached.verify(
-      decodeUTF8(params.message),
-      decodeBase64(params.signature),
-      new PublicKey(params.account).toBytes(),
-    );
-  }
-
-  async formatGeneralMetadatas(
-    metadatas: GeneralMetadata[],
-  ): Promise<MetadataJsonFile[]> {
-    return metadatas.map((md) => ({
-      item: md,
-      json: {
-        name: md.name,
-        symbol: 'Story',
-        description: md.description,
-        image: md.image,
-      },
-    }));
   }
 
   private async _getStoryAddr(storyId: BN): Promise<PublicKey> {
