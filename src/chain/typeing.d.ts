@@ -57,7 +57,7 @@ type GeneralMetadata = {
 };
 
 type MetadataJsonFile = {
-  item: GeneralMetadata['items'][0];
+  item: GeneralMetadata;
   json: any;
 };
 

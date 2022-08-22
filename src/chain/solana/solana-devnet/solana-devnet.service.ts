@@ -12,11 +12,11 @@ import {
   Wallet,
 } from '@project-serum/anchor';
 
-import IDL from './solana-program.idl.json';
+import IDL from '../solana-program.idl.json';
 import { StoryService } from 'src/story/story.service';
 import { NftType } from 'src/story/entities/nft-sale.entity';
 import { ConfigService } from '@nestjs/config';
-import { SolanaPrograms } from './solana-program';
+import { SolanaPrograms } from '../solana-program';
 
 @Injectable()
 export class SolanaDevnetService implements ChainIntegration {
@@ -104,7 +104,7 @@ export class SolanaDevnetService implements ChainIntegration {
           const mintStateAddr = await this._getStoryNftSaleAddr(
             new BN(storyId),
           );
-          let mintState = await this._program.account.storyNftMintState.fetch(
+          const mintState = await this._program.account.storyNftMintState.fetch(
             mintStateAddr,
           );
 
@@ -345,7 +345,7 @@ export class SolanaDevnetService implements ChainIntegration {
         continue;
       }
       const mintStateAddr = await this._getStoryNftSaleAddr(new BN(id));
-      let mintState =
+      const mintState =
         await this._program.account.storyNftMintState.fetchNullable(
           mintStateAddr,
         );

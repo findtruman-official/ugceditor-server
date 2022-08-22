@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SolanaDevnetService } from './solana/solana-devnet.service';
+import { KlaytnBaobabService } from './klaytn/klaytn-baobab/klaytn-baobab.service';
+import { SolanaDevnetService } from './solana/solana-devnet/solana-devnet.service';
 import { TezosGhostTestnetService } from './tezos/tezos-ghost-testnet/tezos-ghost-testnet.service';
 
 type ChainInfo = {
@@ -18,8 +19,9 @@ export class ChainService {
   constructor(
     solDevChain: SolanaDevnetService,
     tezGhostTest: TezosGhostTestnetService,
+    klaytnBaobab: KlaytnBaobabService,
   ) {
-    const chainIntegrs = [solDevChain, tezGhostTest];
+    const chainIntegrs = [solDevChain, tezGhostTest, klaytnBaobab];
     for (const integr of chainIntegrs) {
       this._chains[integr.chain] = integr;
     }

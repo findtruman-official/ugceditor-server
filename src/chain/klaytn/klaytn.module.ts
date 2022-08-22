@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StoryModule } from 'src/story/story.module';
-import { SolanaDevnetService } from './solana-devnet/solana-devnet.service';
+import { KlaytnBaobabService } from './klaytn-baobab/klaytn-baobab.service';
 
 @Module({
   imports: [ConfigModule, StoryModule],
-  providers: [SolanaDevnetService],
-  exports: [SolanaDevnetService],
+  providers: [KlaytnBaobabService],
+  exports: [KlaytnBaobabService],
 })
-export class SolanaModule {}
+export class KlaytnModule {}

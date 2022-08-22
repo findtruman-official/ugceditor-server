@@ -1,9 +1,16 @@
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bull';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ComplexityPlugin } from './gql-plugins/complexity.plugin';
+import { LoggingPlugin } from './gql-plugins/logger.plugin';
 import { IdentModule } from './ident/ident.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { UserIdentMiddleware } from './middleware/user-ident.middleware';
@@ -62,9 +69,22 @@ import { UserIdentMiddleware } from './middleware/user-ident.middleware';
 
     IdentModule,
   ],
+  providers: [ComplexityPlugin, LoggingPlugin],
 })
 export class CoreModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggerMiddleware, UserIdentMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestLoggerMiddleware, UserIdentMiddleware)
+      .exclude(
+        {
+          path: '/ipfs/file/:cid',
+          method: RequestMethod.GET,
+        },
+        {
+          path: '/ipfs/json/:cid',
+          method: RequestMethod.GET,
+        },
+      )
+      .forRoutes('*');
   }
 }
