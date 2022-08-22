@@ -10,14 +10,6 @@ import { StorySyncProcessor } from './story-sync.processor';
 import { StorySyncQueue } from './story.events';
 import { StoryService } from './story.service';
 
-/**
- * 监听:
- * 1. 故事创建
- * 2. 故事更新
- * 3. NFT发布
- * 4. NFT铸造
- * 5. NFT转账
- */
 @Module({
   imports: [
     TypeOrmModule.forFeature([Story, NftSale, StoryInfo, StoryChapter]),

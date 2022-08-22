@@ -13,12 +13,15 @@ export class NftSalesResolver {
   @ResolveField('image', () => String)
   async getImage(@Parent() sale: NftSale): Promise<string> {
     let uriPrefix = sale.uriPrefix;
-    // console.log(uriPrefix);
-    uriPrefix = uriPrefix.replace('undefined', ''); // 链上脏数据
+
+    // dirty data on dev network
+    uriPrefix = uriPrefix.replace('undefined', '');
     uriPrefix = uriPrefix.replace(
       'https://findtruman.io/fcc-story/ipfs/json/',
       '',
     );
+    //
+
     const ipfsCid = uriPrefix.replace('ipfs://', '') + '/' + '1.json';
     const dat = await this._ipfsSvc.loadJson(ipfsCid);
     return dat.image;

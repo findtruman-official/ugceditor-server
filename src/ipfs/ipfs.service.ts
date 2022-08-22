@@ -21,11 +21,9 @@ export class IpfsService {
     };
   }
 
-  // Json内容上传至IPFS
   async storeJson(dat: any): Promise<IpfsAddResult> {
     const formData = new FormData();
     formData.append('file', JSON.stringify(dat));
-    // formData.append('filename', 'ttt.json');
     const result = await firstValueFrom(
       this.http.post(this._host + '/api/v0/add', formData),
     );
@@ -41,7 +39,6 @@ export class IpfsService {
     };
   }
 
-  // 读取IPFS中JSON内容
   async loadJson(cid: string): Promise<any> {
     const result = await firstValueFrom(
       this.http.post(this._host + `/api/v0/cat?arg=${cid}`),

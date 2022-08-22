@@ -55,14 +55,4 @@ export class IpfsController {
     const sf = new StreamableFile(buffer);
     sf.getStream().pipe(res);
   }
-
-  @Get('test-image/:cid')
-  async tmpl(@Param('cid') cid: string) {
-    return `
-    <html>
-      <body style="text-align: center;">
-        <img style="max-height: 100%; max-width: 100%; margin: 0 auto;" src="/ipfs/file/${cid}"/>
-      </body>
-    </html>`;
-  }
 }

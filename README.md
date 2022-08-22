@@ -1,12 +1,1 @@
-``` graphql
-
-// chain
-{
-  chain: String!
-}
-
-// story
-{
-  chain
-}
-```
+# FindTruman Co-Creation Story Server
