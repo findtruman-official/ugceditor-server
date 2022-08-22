@@ -404,7 +404,7 @@ export class SolanaDevnetService implements ChainIntegration {
     const storyAddr = await this._getStoryAddr(new BN(storyId));
 
     const storyData = await this._program.account.story.fetch(storyAddr);
-    console.log(storyData);
+    // console.log(storyData);
 
     const storyInfo = {
       chain: this.chain,

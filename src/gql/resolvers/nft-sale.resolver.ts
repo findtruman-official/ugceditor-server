@@ -13,7 +13,7 @@ export class NftSalesResolver {
   @ResolveField('image', () => String)
   async getImage(@Parent() sale: NftSale): Promise<string> {
     let uriPrefix = sale.uriPrefix;
-    console.log(uriPrefix);
+    // console.log(uriPrefix);
     uriPrefix = uriPrefix.replace('undefined', ''); // 链上脏数据
     uriPrefix = uriPrefix.replace(
       'https://findtruman.io/fcc-story/ipfs/json/',

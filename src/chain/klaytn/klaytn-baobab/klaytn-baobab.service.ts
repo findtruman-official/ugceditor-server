@@ -81,7 +81,6 @@ export class KlaytnBaobabService implements ChainIntegration {
 
   async onModuleInit() {
     this.enabled = this._configSvc.get('KLAYTN_BAOBAB_ENABLE') === 'true';
-    console.log(this.enabled);
     if (!this.enabled) return;
 
     this.factoryAddress = this._configSvc.get('KLAYTN_BAOBAB_FACTORY_ADDRESS');
@@ -245,9 +244,9 @@ export class KlaytnBaobabService implements ChainIntegration {
         emitter.removeAllListeners(),
       );
       this._logger.debug('reset listeners soon ...');
-      vars.timer && clearInterval(vars.timer);
+      vars.timer && clearTimeout(vars.timer);
 
-      setTimeout(this._resetListeners.bind(this), 0);
+      setTimeout(this._resetListeners.bind(this), 1000);
     };
 
     for (const { event, handler } of listeners) {
