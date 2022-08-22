@@ -20,6 +20,7 @@ export class KlaytnBaobabService implements ChainIntegration {
   private _caver: Caver;
   private _factory: Contract;
   private _logger = new Logger(KlaytnBaobabService.name);
+  private _resetNo = 1;
 
   constructor(
     private readonly _configSvc: ConfigService,
@@ -101,7 +102,8 @@ export class KlaytnBaobabService implements ChainIntegration {
   }
 
   private async _resetListeners() {
-    this._logger.debug('reset listeners');
+    const resetNo = this._resetNo++;
+    this._logger.debug(`[${resetNo}] reset listeners`);
     const caver = new Caver(
       this._configSvc.get('KLAYTN_BAOBAB_LISTEN_ENDPOINT'),
     );
@@ -128,21 +130,23 @@ export class KlaytnBaobabService implements ChainIntegration {
         }>) => {
           try {
             const storyId = id;
-            this._logger.log(`Story Updated: ${storyId}`);
+            this._logger.log(`[${resetNo}] Story Updated: ${storyId}`);
             const existed = await this._storySvc.getStory({
               chain: this.chain,
               chainStoryId: storyId,
             });
             if (existed) {
-              this._logger.log(`updated story ${storyId}`);
+              this._logger.log(`[${resetNo}] updated story ${storyId}`);
               await this._syncUpdatedStory(parseInt(storyId));
             } else {
-              this._logger.log(`new published story ${storyId}`);
+              this._logger.log(`[${resetNo}] new published story ${storyId}`);
               await this._syncPublishedStory(parseInt(storyId));
             }
           } catch (err) {
             this._logger.error(err);
-            this._logger.error(`failed to handle StoryUpdated: ${id}`);
+            this._logger.error(
+              `[${resetNo}] failed to handle StoryUpdated: ${id}`,
+            );
           }
         },
       },
@@ -153,7 +157,7 @@ export class KlaytnBaobabService implements ChainIntegration {
         }: EventData<{ id: string }>) => {
           try {
             const storyId = id;
-            this._logger.log(`Story Nft Published: ${storyId}`);
+            this._logger.log(`[${resetNo}] Story Nft Published: ${storyId}`);
 
             const sale = await this.getStoryNftSale(storyId.toString());
 
@@ -174,7 +178,9 @@ export class KlaytnBaobabService implements ChainIntegration {
             await this._storySvc.createNftSales([obj]);
           } catch (err) {
             this._logger.error(err);
-            this._logger.error(`failed to handle StoryNftPublished: ${id}`);
+            this._logger.error(
+              `[${resetNo}] failed to handle StoryNftPublished: ${id}`,
+            );
           }
         },
       },
@@ -189,7 +195,9 @@ export class KlaytnBaobabService implements ChainIntegration {
           try {
             const storyId = id;
             // const mintAddr = smallBN2Number(event.mint);
-            this._logger.log(`Story Nft Minted: ${storyId} by ${minter}`);
+            this._logger.log(
+              `[${resetNo}] Story Nft Minted: ${storyId} by ${minter}`,
+            );
 
             const sale = await this.getStoryNftSale(storyId.toString());
 
@@ -212,7 +220,7 @@ export class KlaytnBaobabService implements ChainIntegration {
           } catch (err) {
             this._logger.error(err);
             this._logger.error(
-              `failed to handle NftMinted: ${id} by ${minter}`,
+              `[${resetNo}] failed to handle NftMinted: ${id} by ${minter}`,
             );
           }
         },
@@ -225,11 +233,11 @@ export class KlaytnBaobabService implements ChainIntegration {
     const checkConn = async () => {
       try {
         const n = await caver.klay.getBlockNumber();
-        this._logger.debug(`wss ping height: ${n}`);
+        this._logger.debug(`[${resetNo}] wss ping height: ${n}`);
         vars.timer = setTimeout(checkConn, INTERVAL);
       } catch (err) {
         this._logger.warn(err);
-        this._logger.warn('wss ping failed');
+        this._logger.warn('[${resetNo}] wss ping failed');
         cleanAndReset();
       }
     };
@@ -243,7 +251,7 @@ export class KlaytnBaobabService implements ChainIntegration {
       Object.values(emitters).forEach((emitter) =>
         emitter.removeAllListeners(),
       );
-      this._logger.debug('reset listeners soon ...');
+      this._logger.debug(`[${resetNo}] reset listeners soon ...`);
       vars.timer && clearTimeout(vars.timer);
 
       setTimeout(this._resetListeners.bind(this), 1000);
@@ -262,11 +270,13 @@ export class KlaytnBaobabService implements ChainIntegration {
           });
       });
       emitter.on('connected', (subId) => {
-        this._logger.debug(`subscription ${event} connected ${subId}`);
+        this._logger.debug(
+          `[${resetNo}] subscription ${event} connected ${subId}`,
+        );
       });
       emitter.on('error', (err) => {
         this._logger.error(err);
-        this._logger.error(`subscription ${event} errored`);
+        this._logger.error(`[${resetNo}] subscription ${event} errored`);
 
         cleanAndReset();
       });
