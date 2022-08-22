@@ -20,6 +20,11 @@ interface ChainIntegration {
   findsAddress: string;
 
   /**
+   * Whether chain integration is enabled;
+   */
+  enabled: boolean;
+
+  /**
    * verify the signature is account signed
    */
   isValidSignature: (params: IsValidSignatureParams) => Promise<boolean>;

@@ -8,6 +8,7 @@ export class TezosGhostTestnetService implements ChainIntegration {
   public name = 'Tezos(Ghostnet Testnet)';
   public factoryAddress = ''; // TODO fill it.
   public findsAddress = ''; // TODO fill it.
+  public enabled = true;
 
   constructor(
     private readonly _storySvc: StoryService,

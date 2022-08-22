@@ -16,14 +16,21 @@ export class ChainService {
 
   private _chains: Record<ChainIntegration['chain'], ChainIntegration> = {};
 
+  private _impls: ChainIntegration[] = [];
+
   constructor(
     solDevChain: SolanaDevnetService,
     tezGhostTest: TezosGhostTestnetService,
     klaytnBaobab: KlaytnBaobabService,
   ) {
-    const chainIntegrs = [solDevChain, tezGhostTest, klaytnBaobab];
-    for (const integr of chainIntegrs) {
-      this._chains[integr.chain] = integr;
+    this._impls = [solDevChain, tezGhostTest, klaytnBaobab];
+  }
+
+  async onModuleInit() {
+    for (const integr of this._impls) {
+      if (integr.enabled) {
+        this._chains[integr.chain] = integr;
+      }
     }
   }
 

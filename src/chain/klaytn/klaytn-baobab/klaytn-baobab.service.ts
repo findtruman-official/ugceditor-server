@@ -15,6 +15,7 @@ export class KlaytnBaobabService implements ChainIntegration {
 
   public factoryAddress: string;
   public findsAddress: string;
+  public enabled: boolean;
 
   private _caver: Caver;
   private _factory: Contract;
@@ -79,6 +80,10 @@ export class KlaytnBaobabService implements ChainIntegration {
   }
 
   async onModuleInit() {
+    this.enabled = this._configSvc.get('KLAYTN_BAOBAB_ENABLE') === 'true';
+    console.log(this.enabled);
+    if (!this.enabled) return;
+
     this.factoryAddress = this._configSvc.get('KLAYTN_BAOBAB_FACTORY_ADDRESS');
     this.findsAddress = this._configSvc.get('KLAYTN_BAOBAB_FINDS');
     const enableSync =

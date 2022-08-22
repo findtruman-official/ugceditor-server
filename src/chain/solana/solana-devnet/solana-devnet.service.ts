@@ -26,6 +26,7 @@ export class SolanaDevnetService implements ChainIntegration {
   public readonly name = 'Solana(Devnet)';
   public findsAddress = '';
   public factoryAddress = '';
+  public enabled = false;
 
   private _conn: Connection = null;
   private _programId: PublicKey = null;
@@ -39,6 +40,10 @@ export class SolanaDevnetService implements ChainIntegration {
   ) {}
 
   async onModuleInit() {
+    const enabled = this._configSvc.get('SOLANA_DEVNET_ENABLE') === 'true';
+    this.enabled = enabled;
+    if (!this.enabled) return;
+
     const enableSync =
       this._configSvc.get('SOLANA_DEVNET_ENABLE_SYNC') === 'true';
     const endpoint = this._configSvc.get('SOLANA_DEVNET_ENDPOINT');
@@ -58,19 +63,6 @@ export class SolanaDevnetService implements ChainIntegration {
     );
 
     if (!enableSync) return;
-    // // 1. 启动监听
-    // // 2. 从最近监听到的高度开始获取有关tx,并解析data (此时实时监听到的内容放入一个独立队列)
-    // // 3. history获取完毕, 处理实时监听的暂存队列, 暂存队列处理完毕后, 实时监听实时处理
-    //
-    // solana 的交易记录会清除(线上为6个月),所以无法从交易记录中监听相关事件.
-    //
-    // 方案一 简单轮讯
-    // 改为轮询
-    // 故事发布: 轮询 factory account. 对照数据库得到新增的故事ID,执行初始化操作
-    // 故事更新: 轮询 各个Story, 对照数据库中cid进行判断.
-    // NFT发布/铸造: 轮询 各个Story对应的Book Account及其他.
-    //
-    // 方案二 消费实时Log + 长间隔轮询(实时Log不能保障一定消费到消息)
 
     this._program.addEventListener('StoryUpdated', async (event, slot, sig) => {
       try {
