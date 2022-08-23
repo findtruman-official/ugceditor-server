@@ -110,7 +110,7 @@ export class KlaytnBaobabService implements ChainIntegration {
   }
 
   private async _resetListeners() {
-    const resetNo = this._resetNo++;
+    const resetNo = this._resetNo;
     this._logger.debug(`[${resetNo}] reset listeners`);
     const caver = new Caver(
       this._configSvc.get('KLAYTN_BAOBAB_LISTEN_ENDPOINT'),
@@ -204,10 +204,8 @@ export class KlaytnBaobabService implements ChainIntegration {
       } catch (err) {
         this._logger.warn(err);
         this._logger.warn(`[${resetNo}] wss ping failed`);
-        // prevent repeated resets
-        if (this._resetNo === resetNo + 1) {
-          cleanAndReset();
-        }
+
+        cleanAndReset();
       }
     };
 
@@ -220,10 +218,14 @@ export class KlaytnBaobabService implements ChainIntegration {
       Object.values(emitters).forEach((emitter) =>
         emitter.removeAllListeners(),
       );
-      this._logger.debug(`[${resetNo}] reset listeners soon ...`);
       vars.timer && clearTimeout(vars.timer);
 
-      setTimeout(this._resetListeners.bind(this), 1000);
+      // prevent repeated resets
+      if (this._resetNo === resetNo) {
+        this._resetNo += 1;
+        this._logger.debug(`[${resetNo}] reset listeners soon ...`);
+        setTimeout(this._resetListeners.bind(this), 1000);
+      }
     };
 
     for (const { event, handler } of listeners) {
