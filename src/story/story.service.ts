@@ -93,11 +93,16 @@ export class StoryService {
       );
       await Promise.all(
         objs.map(async (obj) =>
-          this.syncQueue.add({
-            chain: obj.chain,
-            chainStoryId: obj.chainStoryId,
-            cid: obj.contentHash,
-          }),
+          this.syncQueue.add(
+            {
+              chain: obj.chain,
+              chainStoryId: obj.chainStoryId,
+              cid: obj.contentHash,
+            },
+            {
+              attempts: 5,
+            },
+          ),
         ),
       );
 
@@ -134,11 +139,16 @@ export class StoryService {
 
     await Promise.all(
       stories.map(async (obj) =>
-        this.syncQueue.add({
-          chain: obj.chain,
-          chainStoryId: obj.chainStoryId,
-          cid: obj.contentHash,
-        }),
+        this.syncQueue.add(
+          {
+            chain: obj.chain,
+            chainStoryId: obj.chainStoryId,
+            cid: obj.contentHash,
+          },
+          {
+            attempts: 5,
+          },
+        ),
       ),
     );
 
