@@ -1,5 +1,7 @@
+import { InjectQueue } from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Queue } from 'bull';
 import Caver, { Contract, EventData } from 'caver-js';
 import EventEmitter from 'events';
 import { readFile, writeFile } from 'fs/promises';
@@ -7,6 +9,10 @@ import { NftType } from 'src/story/entities/nft-sale.entity';
 import { StoryService } from 'src/story/story.service';
 import StoryFactoryAbi from '../story-factory.abi.json';
 import StoryNftAbi from '../story-nft.abi.json';
+import {
+  KlaytnBaobabEventData,
+  KlaytnBaobabEventQueue,
+} from './klaytn-baobab.events';
 
 @Injectable()
 export class KlaytnBaobabService implements ChainIntegration {
@@ -25,6 +31,8 @@ export class KlaytnBaobabService implements ChainIntegration {
   constructor(
     private readonly _configSvc: ConfigService,
     private readonly _storySvc: StoryService,
+    @InjectQueue(KlaytnBaobabEventQueue)
+    private readonly _eventQueue: Queue<KlaytnBaobabEventData>,
   ) {}
   public async isValidSignature(
     params: IsValidSignatureParams,
@@ -123,106 +131,64 @@ export class KlaytnBaobabService implements ChainIntegration {
       {
         event: 'StoryUpdated',
         handler: async ({
-          returnValues: { id },
+          returnValues: { id, author },
+          transactionHash,
+          logIndex,
         }: EventData<{
           id: string;
           author: string;
         }>) => {
-          try {
-            const storyId = id;
-            this._logger.log(`[${resetNo}] Story Updated: ${storyId}`);
-            const existed = await this._storySvc.getStory({
-              chain: this.chain,
-              chainStoryId: storyId,
-            });
-            if (existed) {
-              this._logger.log(`[${resetNo}] updated story ${storyId}`);
-              await this._syncUpdatedStory(parseInt(storyId));
-            } else {
-              this._logger.log(`[${resetNo}] new published story ${storyId}`);
-              await this._syncPublishedStory(parseInt(storyId));
-            }
-          } catch (err) {
-            this._logger.error(err);
-            this._logger.error(
-              `[${resetNo}] failed to handle StoryUpdated: ${id}`,
-            );
-          }
+          await this._eventQueue.add(
+            {
+              type: 'story-updated',
+              payload: { id, author },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+            },
+          );
         },
       },
       {
         event: 'StoryNftPublished',
         handler: async ({
           returnValues: { id },
+          transactionHash,
+          logIndex,
         }: EventData<{ id: string }>) => {
-          try {
-            const storyId = id;
-            this._logger.log(`[${resetNo}] Story Nft Published: ${storyId}`);
-
-            const sale = await this.getStoryNftSale(storyId.toString());
-
-            const obj = {
-              chain: this.chain,
-              chainStoryId: storyId.toString(),
-              nftSaleAddr: this.factoryAddress,
-              total: sale.total,
-              price: sale.price,
-              sold: sale.sold,
-              authorReserved: sale.authorReserved,
-              authorClaimed: sale.authorClaimed,
-              uriPrefix: sale.uriPrefix,
-              name: sale.name,
-              type: NftType.NON_FUNGIBLE_TOKEN,
-            };
-
-            await this._storySvc.createNftSales([obj]);
-          } catch (err) {
-            this._logger.error(err);
-            this._logger.error(
-              `[${resetNo}] failed to handle StoryNftPublished: ${id}`,
-            );
-          }
+          await this._eventQueue.add(
+            {
+              type: 'story-nft-published',
+              payload: { id },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+            },
+          );
         },
       },
       {
         event: 'StoryNftMinted',
         handler: async ({
           returnValues: { id, minter },
+          transactionHash,
+          logIndex,
         }: EventData<{
           id: string;
           minter: string;
         }>) => {
-          try {
-            const storyId = id;
-            // const mintAddr = smallBN2Number(event.mint);
-            this._logger.log(
-              `[${resetNo}] Story Nft Minted: ${storyId} by ${minter}`,
-            );
-
-            const sale = await this.getStoryNftSale(storyId.toString());
-
-            const saleObj = await this._storySvc.getStoryNftSale({
-              chain: this.chain,
-              chainStoryId: storyId.toString(),
-            });
-
-            Object.assign(saleObj, {
-              total: sale.total,
-              price: sale.price,
-              sold: sale.sold,
-              authorReserved: sale.authorReserved,
-              authorClaimed: sale.authorClaimed,
-              name: sale.name,
-              type: NftType.NON_FUNGIBLE_TOKEN,
-            });
-
-            await this._storySvc.updateNftSales([saleObj]);
-          } catch (err) {
-            this._logger.error(err);
-            this._logger.error(
-              `[${resetNo}] failed to handle NftMinted: ${id} by ${minter}`,
-            );
-          }
+          await this._eventQueue.add(
+            {
+              type: 'story-nft-minted',
+              payload: { id, minter },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+            },
+          );
         },
       },
     ];
@@ -237,8 +203,11 @@ export class KlaytnBaobabService implements ChainIntegration {
         vars.timer = setTimeout(checkConn, INTERVAL);
       } catch (err) {
         this._logger.warn(err);
-        this._logger.warn('[${resetNo}] wss ping failed');
-        cleanAndReset();
+        this._logger.warn(`[${resetNo}] wss ping failed`);
+        // prevent repeated resets
+        if (this._resetNo === resetNo + 1) {
+          cleanAndReset();
+        }
       }
     };
 
@@ -280,6 +249,91 @@ export class KlaytnBaobabService implements ChainIntegration {
 
         cleanAndReset();
       });
+    }
+  }
+
+  async handleStoryUpdatedEvent({ id }: { id: string }) {
+    try {
+      const storyId = id;
+      this._logger.log(`Story Updated: ${storyId}`);
+      const existed = await this._storySvc.getStory({
+        chain: this.chain,
+        chainStoryId: storyId,
+      });
+      if (existed) {
+        this._logger.log(`updated story ${storyId}`);
+        await this._syncUpdatedStory(parseInt(storyId));
+      } else {
+        this._logger.log(`new published story ${storyId}`);
+        await this._syncPublishedStory(parseInt(storyId));
+      }
+    } catch (err) {
+      this._logger.error(err);
+      this._logger.error(`failed to handle StoryUpdated: ${id}`);
+    }
+  }
+
+  async handleStoryNftPublishedEvent({ id }: { id: string }) {
+    try {
+      const storyId = id;
+      this._logger.log(`Story Nft Published: ${storyId}`);
+
+      const sale = await this.getStoryNftSale(storyId.toString());
+
+      const obj = {
+        chain: this.chain,
+        chainStoryId: storyId.toString(),
+        nftSaleAddr: this.factoryAddress,
+        total: sale.total,
+        price: sale.price,
+        sold: sale.sold,
+        authorReserved: sale.authorReserved,
+        authorClaimed: sale.authorClaimed,
+        uriPrefix: sale.uriPrefix,
+        name: sale.name,
+        type: NftType.NON_FUNGIBLE_TOKEN,
+      };
+
+      await this._storySvc.createNftSales([obj]);
+    } catch (err) {
+      this._logger.error(err);
+      this._logger.error(`failed to handle StoryNftPublished: ${id}`);
+    }
+  }
+
+  async handleStoryNftMintedEvent({
+    id,
+    minter,
+  }: {
+    id: string;
+    minter: string;
+  }) {
+    try {
+      const storyId = id;
+      // const mintAddr = smallBN2Number(event.mint);
+      this._logger.log(`Story Nft Minted: ${storyId} by ${minter}`);
+
+      const sale = await this.getStoryNftSale(storyId.toString());
+
+      const saleObj = await this._storySvc.getStoryNftSale({
+        chain: this.chain,
+        chainStoryId: storyId.toString(),
+      });
+
+      Object.assign(saleObj, {
+        total: sale.total,
+        price: sale.price,
+        sold: sale.sold,
+        authorReserved: sale.authorReserved,
+        authorClaimed: sale.authorClaimed,
+        name: sale.name,
+        type: NftType.NON_FUNGIBLE_TOKEN,
+      });
+
+      await this._storySvc.updateNftSales([saleObj]);
+    } catch (err) {
+      this._logger.error(err);
+      this._logger.error(`failed to handle NftMinted: ${id} by ${minter}`);
     }
   }
 
