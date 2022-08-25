@@ -5,6 +5,7 @@ import { IpfsModule } from './ipfs/ipfs.module';
 import { LoginModule } from './login/login.module';
 import { ChainModule } from './chain/chain.module';
 import { GqlModule } from './gql/gql.module';
+import { StoryTaskModule } from './story-task/story-task.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { GqlModule } from './gql/gql.module';
     LoginModule,
     ChainModule,
     GqlModule,
+    StoryTaskModule,
   ],
   providers: [],
 })
