@@ -1,5 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { UserIdent } from '../middleware/user-ident.middleware';
+import { UserIdent } from '../middleware/user-ident';
 
 @Injectable()
 export class IdentGuard implements CanActivate {

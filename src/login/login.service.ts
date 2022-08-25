@@ -32,7 +32,7 @@ export class LoginService {
     if (isValid) {
       const token = await this.identService.generateToken(
         {
-          chainType: chain,
+          chain: chain,
           account: account,
         },
         { expiresIn },

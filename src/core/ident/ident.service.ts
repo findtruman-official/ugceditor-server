@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 type Payload = {
-  chainType: string;
+  chain: string;
   account: string;
 };
 

@@ -2,11 +2,6 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { IdentService } from '../ident/ident.service';
 
-export type UserIdent = {
-  userId: string;
-  perms: string[];
-};
-
 @Injectable()
 export class UserIdentMiddleware implements NestMiddleware {
   constructor(private readonly identSvc: IdentService) {}

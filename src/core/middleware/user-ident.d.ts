@@ -1,10 +1,12 @@
 import 'express';
 
+type UserIdent = {
+  chain: string;
+  account: string;
+};
+
 interface Locals {
-  ident?: {
-    chainType: string;
-    account: string;
-  };
+  ident?: UserIdent;
 }
 
 declare module 'express' {
