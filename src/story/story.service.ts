@@ -108,7 +108,7 @@ export class StoryService {
   async createStoryInfoSyncTask(data: StorySyncData) {
     return await this.syncQueue.add(data, {
       attempts: 5,
-      timeout: 60,
+      timeout: 60 * 1000,
     });
   }
 
