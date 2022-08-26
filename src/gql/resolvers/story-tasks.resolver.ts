@@ -1,3 +1,4 @@
+import { UseGuards } from '@nestjs/common';
 import {
   Args,
   Int,
@@ -8,6 +9,7 @@ import {
   Resolver,
 } from '@nestjs/graphql';
 import { Ident } from 'src/core/decorators/ident.decorator';
+import { IdentGuard } from 'src/core/guards/ident.guard';
 import { UserIdent } from 'src/core/middleware/user-ident';
 import { StoryTaskService } from 'src/story-task/story-task.service';
 import { StoryService } from 'src/story/story.service';
@@ -38,6 +40,7 @@ export class StoryTasksResolver {
     return await this._storyTaskSvc.listStoryTasks({ chain, chainStoryId });
   }
 
+  @UseGuards(IdentGuard)
   @Mutation(() => StoryTask)
   async createStoryTask(
     @Args() info: CreateStoryTaskArgs,
@@ -50,7 +53,7 @@ export class StoryTasksResolver {
     this._assertAccount({ account: story.author, chain: story.chain }, ident);
     return await this._storyTaskSvc.createStoryTask(info);
   }
-
+  @UseGuards(IdentGuard)
   @Mutation(() => StoryTask)
   async updateStoryTask(
     @Args() info: UpdateStoryTaskArgs,
@@ -59,7 +62,7 @@ export class StoryTasksResolver {
     await this._assertTaskOperatePermission(info.id, ident);
     return await this._storyTaskSvc.updateStoryTask(info);
   }
-
+  @UseGuards(IdentGuard)
   @Mutation(() => StoryTask)
   async cancelStoryTask(
     @Args('id') id: number,
@@ -68,7 +71,7 @@ export class StoryTasksResolver {
     await this._assertTaskOperatePermission(id, ident);
     return await this._storyTaskSvc.cancelStoryTask(id);
   }
-
+  @UseGuards(IdentGuard)
   @Mutation(() => StoryTask)
   async doneStoryTask(
     @Args('id') id: number,

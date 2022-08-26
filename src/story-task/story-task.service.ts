@@ -135,7 +135,7 @@ export class StoryTaskService {
         },
       },
       order: {
-        createTime: 'asc',
+        createTime: 'desc',
       },
       relations: withTask ? ['task'] : [],
     });
