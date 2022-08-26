@@ -1,6 +1,7 @@
 import {
   InjectQueue,
   OnQueueCompleted,
+  OnQueueFailed,
   Process,
   Processor,
 } from '@nestjs/bull';
@@ -31,22 +32,26 @@ export class StorySyncProcessor {
 
   @Process()
   async process(job: Job<StorySyncData>) {
-    const { chain, chainStoryId, cid } = job.data;
-    const data = await this._ipfsSvc.loadJson(cid);
-    try {
-      await this._storySvc.updateStoryDetailsFromJson({
-        chain,
-        chainStoryId,
-        json: data,
-        contentHash: cid,
-      });
-    } catch (err) {
-      console.error(err);
-    }
+    const { chain, chainStoryId } = job.data;
+    const story = await this._storySvc.getStory({ chain, chainStoryId });
+    const data = await this._ipfsSvc.loadJson(story.contentHash);
+
+    await this._storySvc.updateStoryDetailsFromJson({
+      chain,
+      chainStoryId,
+      json: data,
+      contentHash: story.contentHash,
+    });
   }
 
   @OnQueueCompleted()
   async clean(job: Job<StorySyncData>, result: any) {
     await job.remove();
+  }
+
+  @OnQueueFailed()
+  async onFailed(job: Job<StorySyncData>, err: Error) {
+    this.logger.warn(`${JSON.stringify(job.data)} failed`);
+    this.logger.warn(err);
   }
 }

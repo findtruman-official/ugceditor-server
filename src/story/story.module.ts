@@ -9,6 +9,7 @@ import { Story } from './entities/story.entity';
 import { StorySyncProcessor } from './story-sync.processor';
 import { StorySyncQueue } from './story.events';
 import { StoryService } from './story.service';
+import { StoryController } from './story.controller';
 
 @Module({
   imports: [
@@ -20,5 +21,6 @@ import { StoryService } from './story.service';
   ],
   providers: [StoryService, StorySyncProcessor],
   exports: [StoryService],
+  controllers: [StoryController],
 })
 export class StoryModule {}

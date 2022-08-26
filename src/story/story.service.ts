@@ -91,22 +91,24 @@ export class StoryService {
       const objs = await storyRepo.save(
         stories.map((story) => storyRepo.create(story)),
       );
+
       await Promise.all(
         objs.map(async (obj) =>
-          this.syncQueue.add(
-            {
-              chain: obj.chain,
-              chainStoryId: obj.chainStoryId,
-              cid: obj.contentHash,
-            },
-            {
-              attempts: 5,
-            },
-          ),
+          this.createStoryInfoSyncTask({
+            chain: obj.chain,
+            chainStoryId: obj.chainStoryId,
+          }),
         ),
       );
 
       return objs;
+    });
+  }
+
+  async createStoryInfoSyncTask(data: StorySyncData) {
+    return await this.syncQueue.add(data, {
+      attempts: 5,
+      timeout: 60,
     });
   }
 
@@ -139,16 +141,10 @@ export class StoryService {
 
     await Promise.all(
       stories.map(async (obj) =>
-        this.syncQueue.add(
-          {
-            chain: obj.chain,
-            chainStoryId: obj.chainStoryId,
-            cid: obj.contentHash,
-          },
-          {
-            attempts: 5,
-          },
-        ),
+        this.createStoryInfoSyncTask({
+          chain: obj.chain,
+          chainStoryId: obj.chainStoryId,
+        }),
       ),
     );
 
