@@ -106,16 +106,19 @@ export class StoryTaskService {
           submitIds = submitIds.filter((s) => s !== submitObj.id);
           if (submitObj.status === StoryTaskSubmitStatus.Pending) {
             submitObj.status = StoryTaskSubmitStatus.Approved;
+            await repo.submit.save(submitObj);
           }
         } else {
           if (submitObj.status === StoryTaskSubmitStatus.Pending) {
             submitObj.status = StoryTaskSubmitStatus.Rejected;
+            await repo.submit.save(submitObj);
           }
         }
       }
       if (submitIds.length > 0) {
         throw new Error(`invalid submitId ${JSON.stringify(submitIds)}`);
       }
+      obj.status = StoryTaskStatus.Done;
       return await repo.task.save(obj);
     });
   }
