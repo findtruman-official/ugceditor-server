@@ -1,1 +1,1 @@
-# FindTruman Co-Creation Story Server
+# FindTruman UGC Editor Server
