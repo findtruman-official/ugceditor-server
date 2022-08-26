@@ -6,6 +6,7 @@ export type KlaytnBaobabEventData =
 type StoryUpdatedEvent = {
   type: 'story-updated';
   payload: {
+    blockNumber: number;
     id: string;
     author: string;
   };
@@ -14,6 +15,7 @@ type StoryUpdatedEvent = {
 type StoryNftPublishedEvent = {
   type: 'story-nft-published';
   payload: {
+    blockNumber: number;
     id: string;
   };
 };
@@ -21,6 +23,7 @@ type StoryNftPublishedEvent = {
 type StoryNftMintedEvent = {
   type: 'story-nft-minted';
   payload: {
+    blockNumber: number;
     id: string;
     minter: string;
   };

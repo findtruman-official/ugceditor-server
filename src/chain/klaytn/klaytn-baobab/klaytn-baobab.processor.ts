@@ -27,6 +27,9 @@ export class KlaytnBaobabEventProcessor {
     const { data } = job;
     this.logger.debug(`handle job ${job.id}`);
     this.logger.debug(`${JSON.stringify(job.data)}`);
+
+    await this.waitUntilConfirmed(data.payload.blockNumber, 10);
+
     await new Promise((res) => setTimeout(res, 500)); // manually delay, prevent rpc endpoint  frequency limiting
 
     switch (data.type) {
@@ -44,6 +47,22 @@ export class KlaytnBaobabEventProcessor {
 
       default:
         this.logger.error(`invalid event ${JSON.stringify(job.data)}`);
+    }
+  }
+
+  private async waitUntilConfirmed(target: number, confirmedBlocks: number) {
+    while (true) {
+      const blockNumber = await this.svc.getBlockNumber();
+      if (blockNumber >= target) {
+        break;
+      } else {
+        this.logger.debug(
+          `wait block number confirmed ${confirmedBlocks} times, current ${blockNumber}/${
+            target + confirmedBlocks
+          }`,
+        );
+        await new Promise((res) => setTimeout(res, 2000));
+      }
     }
   }
 }

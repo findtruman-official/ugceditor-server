@@ -133,6 +133,7 @@ export class KlaytnBaobabService implements ChainIntegration {
         handler: async ({
           returnValues: { id, author },
           transactionHash,
+          blockNumber,
           logIndex,
         }: EventData<{
           id: string;
@@ -141,7 +142,7 @@ export class KlaytnBaobabService implements ChainIntegration {
           await this._eventQueue.add(
             {
               type: 'story-updated',
-              payload: { id, author },
+              payload: { id, author, blockNumber },
             },
             {
               jobId: `${transactionHash}-${logIndex}`,
@@ -156,11 +157,12 @@ export class KlaytnBaobabService implements ChainIntegration {
           returnValues: { id },
           transactionHash,
           logIndex,
+          blockNumber,
         }: EventData<{ id: string }>) => {
           await this._eventQueue.add(
             {
               type: 'story-nft-published',
-              payload: { id },
+              payload: { id, blockNumber },
             },
             {
               jobId: `${transactionHash}-${logIndex}`,
@@ -175,6 +177,7 @@ export class KlaytnBaobabService implements ChainIntegration {
           returnValues: { id, minter },
           transactionHash,
           logIndex,
+          blockNumber,
         }: EventData<{
           id: string;
           minter: string;
@@ -182,7 +185,7 @@ export class KlaytnBaobabService implements ChainIntegration {
           await this._eventQueue.add(
             {
               type: 'story-nft-minted',
-              payload: { id, minter },
+              payload: { id, minter, blockNumber },
             },
             {
               jobId: `${transactionHash}-${logIndex}`,
@@ -337,6 +340,10 @@ export class KlaytnBaobabService implements ChainIntegration {
       this._logger.error(err);
       this._logger.error(`failed to handle NftMinted: ${id} by ${minter}`);
     }
+  }
+
+  async getBlockNumber(): Promise<number> {
+    return await this._caver.klay.getBlockNumber();
   }
 
   private async _syncPublishedStory(storyId: number) {
