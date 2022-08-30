@@ -25,6 +25,13 @@ interface ChainIntegration {
   enabled: boolean;
 
   /**
+   * Task Module Type
+   * basic: use centralized task system
+   * chain: use on-chain task system (ChainIntegration)
+   */
+  taskModule: TaskModuleType;
+
+  /**
    * verify the signature is account signed
    */
   isValidSignature: (params: IsValidSignatureParams) => Promise<boolean>;
@@ -47,6 +54,8 @@ interface ChainIntegration {
    */
   getStoryNftSale: (chainStoryId: string) => Promise<NftSale>;
 }
+
+type TaskModuleType = 'chain' | 'basic';
 
 type IsValidSignatureParams = {
   signature: string;

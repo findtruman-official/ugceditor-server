@@ -1,4 +1,13 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
+
+export enum TaskModuleType {
+  Basic = 'basic',
+  Chain = 'chain',
+}
+
+registerEnumType(TaskModuleType, {
+  name: 'TaskModuleType',
+});
 
 @ObjectType()
 export class Chain {
@@ -21,4 +30,9 @@ export class Chain {
     description: 'finds token address (solana mint)',
   })
   findsAddress: string;
+
+  @Field(() => TaskModuleType, {
+    description: 'task module type.',
+  })
+  taskModule: TaskModuleType;
 }

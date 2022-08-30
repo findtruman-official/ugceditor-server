@@ -8,6 +8,7 @@ type ChainInfo = {
   type: string;
   factoryAddress: string;
   findsAddress: string;
+  taskModule: TaskModuleType;
 };
 
 @Injectable()
@@ -35,12 +36,9 @@ export class ChainService {
   }
 
   async listChains(): Promise<ChainInfo[]> {
-    return Object.values(this._chains).map((chain) => ({
-      name: chain.name,
-      type: chain.chain,
-      factoryAddress: chain.factoryAddress,
-      findsAddress: chain.findsAddress,
-    }));
+    return await Promise.all(
+      Object.keys(this._chains).map((c) => this.getChainInfo(c)),
+    );
   }
 
   async getChainInfo(chain: string): Promise<ChainInfo> {
@@ -53,6 +51,7 @@ export class ChainService {
       type: chainIntegr.chain,
       factoryAddress: chainIntegr.factoryAddress,
       findsAddress: chainIntegr.findsAddress,
+      taskModule: chainIntegr.taskModule,
     };
   }
 

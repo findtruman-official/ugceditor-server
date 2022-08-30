@@ -6,6 +6,7 @@ import { StoryService } from 'src/story/story.service';
 export class TezosGhostTestnetService implements ChainIntegration {
   public chain = 'tezos-ghost-testnet';
   public name = 'Tezos(Ghostnet Testnet)';
+  public taskModule: TaskModuleType = 'basic';
   public factoryAddress = ''; // TODO fill it.
   public findsAddress = ''; // TODO fill it.
   public enabled = true;

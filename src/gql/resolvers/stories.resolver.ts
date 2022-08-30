@@ -13,7 +13,7 @@ import { ChainService } from 'src/chain/chain.service';
 import { IpfsService } from 'src/ipfs/ipfs.service';
 import { NftType } from 'src/story/entities/nft-sale.entity';
 import { StoryService, StorySort } from 'src/story/story.service';
-import { Chain } from '../models/chain.model';
+import { Chain, TaskModuleType } from '../models/chain.model';
 import { IpfsResult } from '../models/ipfs-result.model';
 import { NftSale } from '../models/nft-sale.model';
 import { StoryChapter } from '../models/story-chapter.model';
@@ -204,7 +204,14 @@ export class StoriesResolver {
 
   @ResolveField('chainInfo', () => Chain)
   async getChain(@Parent() story: Story): Promise<Chain> {
-    return await this._chainSvc.getChainInfo(story.chain);
+    const chainInfo = await this._chainSvc.getChainInfo(story.chain);
+    return {
+      ...chainInfo,
+      taskModule:
+        chainInfo.taskModule === 'basic'
+          ? TaskModuleType.Basic
+          : TaskModuleType.Chain,
+    };
   }
 
   @ResolveField('nft', () => NftSale, { nullable: true })

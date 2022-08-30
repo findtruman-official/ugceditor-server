@@ -19,6 +19,8 @@ export class KlaytnBaobabService implements ChainIntegration {
   public chain = 'klaytn-baobab';
   public name = 'Klaytn(Baobab)';
 
+  public taskModule: TaskModuleType = 'basic';
+
   public factoryAddress: string;
   public findsAddress: string;
   public enabled: boolean;

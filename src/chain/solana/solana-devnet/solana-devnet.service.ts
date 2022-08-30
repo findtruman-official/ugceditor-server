@@ -24,6 +24,7 @@ export class SolanaDevnetService implements ChainIntegration {
 
   public readonly chain = 'solana-dev';
   public readonly name = 'Solana(Devnet)';
+  public taskModule: TaskModuleType = 'basic';
   public findsAddress = '';
   public factoryAddress = '';
   public enabled = false;
