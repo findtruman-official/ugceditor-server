@@ -19,12 +19,12 @@ import { ConfigService } from '@nestjs/config';
 import { SolanaPrograms } from '../solana-program';
 
 @Injectable()
-export class SolanaDevnetService implements ChainIntegration {
+export class SolanaDevnetService implements Chain.ChainIntegration {
   private _logger = new Logger(SolanaDevnetService.name);
 
   public readonly chain = 'solana-dev';
   public readonly name = 'Solana(Devnet)';
-  public taskModule: TaskModuleType = 'basic';
+  public taskModule: Chain.TaskModuleType = 'basic';
   public findsAddress = '';
   public factoryAddress = '';
   public enabled = false;
@@ -187,7 +187,9 @@ export class SolanaDevnetService implements ChainIntegration {
     });
   }
 
-  async isValidSignature(params: IsValidSignatureParams): Promise<boolean> {
+  async isValidSignature(
+    params: Chain.IsValidSignatureParams,
+  ): Promise<boolean> {
     return nacl.sign.detached.verify(
       decodeUTF8(params.message),
       decodeBase64(params.signature),
@@ -196,8 +198,8 @@ export class SolanaDevnetService implements ChainIntegration {
   }
 
   async formatGeneralMetadatas(
-    metadatas: GeneralMetadata[],
-  ): Promise<MetadataJsonFile[]> {
+    metadatas: Chain.GeneralMetadata[],
+  ): Promise<Chain.MetadataJsonFile[]> {
     return metadatas.map((md) => ({
       item: md,
       json: {
@@ -209,7 +211,7 @@ export class SolanaDevnetService implements ChainIntegration {
     }));
   }
 
-  async getStory(chainStoryId: string): Promise<Story> {
+  async getStory(chainStoryId: string): Promise<Chain.Story> {
     const storyAddr = await this._getStoryAddr(new BN(chainStoryId));
     const story = await this._program.account.story.fetchNullable(storyAddr);
     return story
@@ -222,7 +224,7 @@ export class SolanaDevnetService implements ChainIntegration {
       : null;
   }
 
-  async getStoryNftSale(chainStoryId: string): Promise<NftSale> {
+  async getStoryNftSale(chainStoryId: string): Promise<Chain.NftSale> {
     const addr = await this._getStoryNftSaleAddr(new BN(chainStoryId));
     const sale = await this._program.account.storyNftMintState.fetchNullable(
       addr,
@@ -240,6 +242,21 @@ export class SolanaDevnetService implements ChainIntegration {
           total: smallBN2Number(sale.total),
         }
       : null;
+  }
+
+  async getTask(
+    chainStoryId: string,
+    chainTaskId: string,
+  ): Promise<Chain.Task> {
+    return null;
+  }
+
+  async getSubmit(
+    chainStoryId: string,
+    chainTaskId: string,
+    chainSubmitId: string,
+  ): Promise<Chain.Submit> {
+    return null;
   }
 
   private async _scanNewlyStory() {

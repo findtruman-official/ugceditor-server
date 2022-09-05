@@ -8,16 +8,19 @@ type ChainInfo = {
   type: string;
   factoryAddress: string;
   findsAddress: string;
-  taskModule: TaskModuleType;
+  taskModule: Chain.TaskModuleType;
 };
 
 @Injectable()
 export class ChainService {
   private _logger = new Logger(ChainService.name);
 
-  private _chains: Record<ChainIntegration['chain'], ChainIntegration> = {};
+  private _chains: Record<
+    Chain.ChainIntegration['chain'],
+    Chain.ChainIntegration
+  > = {};
 
-  private _impls: ChainIntegration[] = [];
+  private _impls: Chain.ChainIntegration[] = [];
 
   constructor(
     solDevChain: SolanaDevnetService,
@@ -75,8 +78,8 @@ export class ChainService {
 
   async formatGeneralMetadatas(
     chain: string,
-    items: Parameters<ChainIntegration['formatGeneralMetadatas']>[0],
-  ): Promise<ReturnType<ChainIntegration['formatGeneralMetadatas']>> {
+    items: Parameters<Chain.ChainIntegration['formatGeneralMetadatas']>[0],
+  ): Promise<ReturnType<Chain.ChainIntegration['formatGeneralMetadatas']>> {
     const integr = this._getChainIntegr(chain);
     if (!integr) {
       return [];
@@ -84,19 +87,22 @@ export class ChainService {
     return integr.formatGeneralMetadatas(items);
   }
 
-  async getStory(chain: string, chainStoryId: string): Promise<Story> {
+  async getStory(chain: string, chainStoryId: string): Promise<Chain.Story> {
     const integr = this._getChainIntegr(chain);
     if (!integr) return null;
     return await integr.getStory(chainStoryId);
   }
 
-  async getStoryNftSale(chain: string, chainStoryId: string): Promise<NftSale> {
+  async getStoryNftSale(
+    chain: string,
+    chainStoryId: string,
+  ): Promise<Chain.NftSale> {
     const integr = this._getChainIntegr(chain);
     if (!integr) return null;
     return await integr.getStoryNftSale(chainStoryId);
   }
 
-  private _getChainIntegr(chain: string): ChainIntegration | undefined {
+  private _getChainIntegr(chain: string): Chain.ChainIntegration | undefined {
     const chainIntegr = this._chains[chain];
     if (!chainIntegr) {
       this._logger.warn(`invalid chain: ${chain}`);

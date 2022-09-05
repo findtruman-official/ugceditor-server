@@ -2,7 +2,10 @@ export const KlaytnBaobabEventQueue = 'klaytn-baobab';
 export type KlaytnBaobabEventData =
   | StoryUpdatedEvent
   | StoryNftPublishedEvent
-  | StoryNftMintedEvent;
+  | StoryNftMintedEvent
+  | AuthorClaimedEvent
+  | TaskUpdatedEvent
+  | SubmitUpdatedEvent;
 type StoryUpdatedEvent = {
   type: 'story-updated';
   payload: {
@@ -26,5 +29,33 @@ type StoryNftMintedEvent = {
     blockNumber: number;
     id: string;
     minter: string;
+  };
+};
+
+type AuthorClaimedEvent = {
+  type: 'author-claimed';
+  payload: {
+    blockNumber: number;
+    storyId: string;
+    amount: string;
+  };
+};
+
+type TaskUpdatedEvent = {
+  type: 'task-updated';
+  payload: {
+    blockNumber: number;
+    storyId: string;
+    taskId: string;
+  };
+};
+
+type SubmitUpdatedEvent = {
+  type: 'submit-updated';
+  payload: {
+    blockNumber: number;
+    storyId: string;
+    taskId: string;
+    submitId: string;
   };
 };

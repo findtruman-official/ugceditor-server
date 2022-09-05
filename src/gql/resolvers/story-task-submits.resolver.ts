@@ -44,7 +44,7 @@ export class StoryTaskSubmitsResolver {
 
   async _assertTaskChainMatch(taskId: number, ident: UserIdent) {
     const task = await this._storyTaskSvc.getStoryTask(taskId);
-    console.log(taskId, ident, task);
+    // console.log(taskId, ident, task);
     if (task.chain !== ident.chain) {
       throw new Error('invalid chain');
     }

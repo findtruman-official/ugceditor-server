@@ -1,4 +1,11 @@
-import { InjectQueue, Process, Processor } from '@nestjs/bull';
+import {
+  InjectQueue,
+  OnQueueActive,
+  OnQueueCompleted,
+  OnQueueFailed,
+  Process,
+  Processor,
+} from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
 import {
@@ -20,13 +27,13 @@ export class KlaytnBaobabEventProcessor {
     this.logger.log('clean completed jobs...');
     const jobs = await this.taskQueue.getJobs(['completed']);
     await Promise.all(jobs.map(async (job) => await job.remove()));
+    const failedJobs = await this.taskQueue.getJobs(['failed']);
+    await Promise.all(failedJobs.map(async (job) => await job.remove()));
   }
 
   @Process()
   async process(job: Job<KlaytnBaobabEventData>) {
     const { data } = job;
-    this.logger.debug(`handle job ${job.id}`);
-    this.logger.debug(`${JSON.stringify(job.data)}`);
 
     await this.waitUntilConfirmed(data.payload.blockNumber, 10);
 
@@ -45,9 +52,38 @@ export class KlaytnBaobabEventProcessor {
         await this.svc.handleStoryNftMintedEvent(data.payload);
         break;
 
+      case 'author-claimed':
+        await this.svc.handleAuthorClaimed(data.payload);
+        break;
+
+      case 'task-updated':
+        await this.svc.handleTaskUpdated(data.payload);
+        break;
+
+      case 'submit-updated':
+        await this.svc.handleSubmitUpdated(data.payload);
+        break;
+
       default:
         this.logger.error(`invalid event ${JSON.stringify(job.data)}`);
     }
+  }
+
+  @OnQueueActive()
+  async onActive(job: Job) {
+    this.logger.debug(`job active ${job.id}`);
+    this.logger.debug(`job data ${JSON.stringify(job.data)}`);
+  }
+  @OnQueueCompleted()
+  async clean(job: Job, result: any) {
+    this.logger.debug(`${job.id} done`);
+    await job.remove();
+  }
+
+  @OnQueueFailed()
+  async onFailed(job: Job, err: Error) {
+    this.logger.error(`${job.id} failed`);
+    this.logger.error(err, err.stack);
   }
 
   private async waitUntilConfirmed(target: number, confirmedBlocks: number) {

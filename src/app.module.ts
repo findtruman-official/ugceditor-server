@@ -6,6 +6,7 @@ import { LoginModule } from './login/login.module';
 import { ChainModule } from './chain/chain.module';
 import { GqlModule } from './gql/gql.module';
 import { StoryTaskModule } from './story-task/story-task.module';
+import { StoryChainTaskModule } from './story-chain-task/story-chain-task.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { StoryTaskModule } from './story-task/story-task.module';
     ChainModule,
     GqlModule,
     StoryTaskModule,
+    StoryChainTaskModule,
   ],
   providers: [],
 })

@@ -5,6 +5,8 @@ import { Queue } from 'bull';
 import Caver, { Contract, EventData } from 'caver-js';
 import EventEmitter from 'events';
 import { readFile, writeFile } from 'fs/promises';
+import { chain2ett_SubmitStatus, chain2ett_TaskStatus } from 'src/chain/utils';
+import { StoryChainTaskService } from 'src/story-chain-task/story-chain-task.service';
 import { NftType } from 'src/story/entities/nft-sale.entity';
 import { StoryService } from 'src/story/story.service';
 import StoryFactoryAbi from '../story-factory.abi.json';
@@ -15,11 +17,11 @@ import {
 } from './klaytn-baobab.events';
 
 @Injectable()
-export class KlaytnBaobabService implements ChainIntegration {
+export class KlaytnBaobabService implements Chain.ChainIntegration {
   public chain = 'klaytn-baobab';
   public name = 'Klaytn(Baobab)';
 
-  public taskModule: TaskModuleType = 'basic';
+  public taskModule: Chain.TaskModuleType = 'chain';
 
   public factoryAddress: string;
   public findsAddress: string;
@@ -33,11 +35,12 @@ export class KlaytnBaobabService implements ChainIntegration {
   constructor(
     private readonly _configSvc: ConfigService,
     private readonly _storySvc: StoryService,
+    private readonly _chainTaskSvc: StoryChainTaskService,
     @InjectQueue(KlaytnBaobabEventQueue)
     private readonly _eventQueue: Queue<KlaytnBaobabEventData>,
   ) {}
   public async isValidSignature(
-    params: IsValidSignatureParams,
+    params: Chain.IsValidSignatureParams,
   ): Promise<boolean> {
     return (
       params.account.toLocaleLowerCase() ==
@@ -48,8 +51,8 @@ export class KlaytnBaobabService implements ChainIntegration {
   }
 
   public async formatGeneralMetadatas(
-    metadatas: GeneralMetadata[],
-  ): Promise<MetadataJsonFile[]> {
+    metadatas: Chain.GeneralMetadata[],
+  ): Promise<Chain.MetadataJsonFile[]> {
     return metadatas.map((m) => ({
       item: m,
       json: {
@@ -60,7 +63,7 @@ export class KlaytnBaobabService implements ChainIntegration {
     }));
   }
 
-  public async getStory(chainStoryId: string): Promise<Story> {
+  public async getStory(chainStoryId: string): Promise<Chain.Story> {
     const story = await this._factory.methods.stories(chainStoryId).call();
     if (story.id.toString() == '0') return null;
     return {
@@ -71,7 +74,7 @@ export class KlaytnBaobabService implements ChainIntegration {
     };
   }
 
-  public async getStoryNftSale(chainStoryId: string): Promise<NftSale> {
+  public async getStoryNftSale(chainStoryId: string): Promise<Chain.NftSale> {
     const sale = await this._factory.methods.sales(chainStoryId).call();
     if (sale.id.toString() == '0') return null;
 
@@ -87,6 +90,47 @@ export class KlaytnBaobabService implements ChainIntegration {
       uriPrefix: await nft.methods.base().call(),
       type: '721',
       price: sale.price.toString(),
+    };
+  }
+
+  async getTask(
+    chainStoryId: string,
+    chainTaskId: string,
+  ): Promise<Chain.Task> {
+    const result = await this._factory.methods
+      .getTask(chainStoryId, chainTaskId)
+      .call();
+    if (result.id == '0') return null;
+    const status = ['TODO', 'DONE', 'CANCELLED'][
+      parseInt(result.status)
+    ] as Chain.Task['status'];
+    return {
+      id: chainTaskId,
+      cid: result.cid,
+      creator: result.creator,
+      nft: result.nft,
+      rewardNfts: result.rewardNfts.map((v) => v.toString()),
+      status: status,
+    };
+  }
+
+  async getSubmit(
+    chainStoryId: string,
+    chainTaskId: string,
+    chainSubmitId: string,
+  ): Promise<Chain.Submit> {
+    const result = await this._factory.methods
+      .getSubmit(chainStoryId, chainTaskId, chainSubmitId)
+      .call();
+    if (result.id == '0') return null;
+    const status = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWED'][
+      parseInt(result.status)
+    ] as Chain.Submit['status'];
+    return {
+      id: chainTaskId,
+      cid: result.cid,
+      creator: result.creator,
+      status: status, // value is the same as Enum
     };
   }
 
@@ -196,6 +240,83 @@ export class KlaytnBaobabService implements ChainIntegration {
           );
         },
       },
+      {
+        event: 'AuthorClaimed',
+        handler: async ({
+          returnValues,
+          blockNumber,
+          transactionHash,
+          logIndex,
+        }: EventData<{
+          storyId: string;
+          amount: string;
+        }>) => {
+          await this._eventQueue.add(
+            {
+              type: 'author-claimed',
+              payload: { ...returnValues, blockNumber },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+            },
+          );
+        },
+      },
+      {
+        event: 'TaskUpdated',
+        handler: async ({
+          returnValues,
+          blockNumber,
+          transactionHash,
+          logIndex,
+        }: EventData<{
+          storyId: string;
+          taskId: string;
+        }>) => {
+          await this._eventQueue.add(
+            {
+              type: 'task-updated',
+              payload: {
+                ...returnValues,
+                blockNumber,
+              },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+              timeout: 60 * 1000,
+            },
+          );
+        },
+      },
+      {
+        event: 'SubmitUpdated',
+        handler: async ({
+          returnValues,
+          blockNumber,
+          transactionHash,
+          logIndex,
+        }: EventData<{
+          storyId: string;
+          taskId: string;
+          submitId: string;
+        }>) => {
+          await this._eventQueue.add(
+            {
+              type: 'submit-updated',
+              payload: {
+                ...returnValues,
+                blockNumber,
+              },
+            },
+            {
+              jobId: `${transactionHash}-${logIndex}`,
+              attempts: 3,
+            },
+          );
+        },
+      },
     ];
 
     const emitters: Record<typeof listeners[0]['event'], EventEmitter> = {};
@@ -240,7 +361,14 @@ export class KlaytnBaobabService implements ChainIntegration {
       emitters[event] = emitter;
       emitter.on('data', (d: EventData<any>) => {
         this._setLastListenedBlock(event, d.blockNumber)
-          .then(() => handler(d))
+          .then(() => {
+            this._logger.debug(
+              `recv event ${event} at block ${
+                d.blockNumber
+              } with ${JSON.stringify(d.returnValues)}`,
+            );
+            handler(d);
+          })
           .catch((err) => {
             this._logger.error(err);
           });
@@ -341,6 +469,109 @@ export class KlaytnBaobabService implements ChainIntegration {
     } catch (err) {
       this._logger.error(err);
       this._logger.error(`failed to handle NftMinted: ${id} by ${minter}`);
+    }
+  }
+
+  async handleAuthorClaimed({
+    storyId,
+    amount,
+  }: {
+    storyId: string;
+    amount: string;
+  }) {
+    // try {
+    this._logger.log(`AuthorClaimed: storyId=${storyId}, amount=${amount}`);
+    const obj = await this._storySvc.getStoryNftSale({
+      chain: this.chain,
+      chainStoryId: storyId,
+    });
+    obj.authorClaimed = (await this.getStoryNftSale(storyId)).authorClaimed;
+    await this._storySvc.updateNftSales([obj]);
+    // } catch (err) {
+    //   this._logger.error(err);
+    //   this._logger.error(
+    //     `failed to handle AuthorClaimed: storyId=${storyId}, amount=${amount}`,
+    //   );
+    // }
+  }
+
+  async handleTaskUpdated({
+    storyId,
+    taskId,
+  }: {
+    storyId: string;
+    taskId: string;
+  }) {
+    const obj = await this._chainTaskSvc.getTask({
+      chain: this.chain,
+      chainStoryId: storyId,
+      chainTaskId: taskId,
+    });
+    const data = await this.getTask(storyId, taskId);
+    if (obj) {
+      this._logger.debug(`update existed task`);
+      await this._chainTaskSvc.updateTask({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+
+        cid: data.cid,
+        status: chain2ett_TaskStatus(data.status),
+      });
+    } else {
+      this._logger.debug(`create new task`);
+      await this._chainTaskSvc.createTask({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+
+        creator: data.creator,
+        nft: data.nft,
+        rewardNfts: data.rewardNfts,
+        cid: data.cid,
+        status: chain2ett_TaskStatus(data.status),
+      });
+    }
+  }
+
+  async handleSubmitUpdated({
+    storyId,
+    taskId,
+    submitId,
+  }: {
+    storyId: string;
+    taskId: string;
+    submitId: string;
+  }) {
+    const obj = await this._chainTaskSvc.getSubmit({
+      chain: this.chain,
+      chainStoryId: storyId,
+      chainTaskId: taskId,
+      chainSubmitId: submitId,
+    });
+    const data = await this.getSubmit(storyId, taskId, submitId);
+    if (obj) {
+      this._logger.debug(`update existed submit`);
+      await this._chainTaskSvc.updateSubmit({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+        chainSubmitId: submitId,
+
+        status: chain2ett_SubmitStatus(data.status),
+      });
+    } else {
+      this._logger.debug(`create new task`);
+      await this._chainTaskSvc.createSubmit({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+        chainSubmitId: submitId,
+
+        creator: data.creator,
+        cid: data.cid,
+        status: chain2ett_SubmitStatus(data.status),
+      });
     }
   }
 
