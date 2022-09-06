@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StoryChainTaskModule } from 'src/story-chain-task/story-chain-task.module';
 import { StoryModule } from 'src/story/story.module';
+import { KlaytnBaobabController } from './klaytn-baobab/klaytn-baobab.controller';
 import { KlaytnBaobabEventQueue } from './klaytn-baobab/klaytn-baobab.events';
 import { KlaytnBaobabEventProcessor } from './klaytn-baobab/klaytn-baobab.processor';
 import { KlaytnBaobabService } from './klaytn-baobab/klaytn-baobab.service';
@@ -18,5 +19,6 @@ import { KlaytnBaobabService } from './klaytn-baobab/klaytn-baobab.service';
   ],
   providers: [KlaytnBaobabService, KlaytnBaobabEventProcessor],
   exports: [KlaytnBaobabService],
+  controllers: [KlaytnBaobabController],
 })
 export class KlaytnModule {}
