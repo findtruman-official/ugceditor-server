@@ -1,10 +1,12 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import FormData from 'form-data';
 
 @Injectable()
 export class IpfsService {
+  private readonly _logger = new Logger(IpfsService.name);
+
   private _host = 'http://127.0.0.1:5001';
 
   constructor(private readonly http: HttpService) {}
@@ -39,14 +41,19 @@ export class IpfsService {
     };
   }
 
-  async loadJson(cid: string): Promise<any> {
+  async loadJson(
+    cid: string,
+    config?: Parameters<HttpService['post']>[2],
+  ): Promise<any> {
+    this._logger.debug(`load json ${cid}`);
     const result = await firstValueFrom(
-      this.http.post(this._host + `/api/v0/cat?arg=${cid}`),
+      this.http.post(this._host + `/api/v0/cat?arg=${cid}`, undefined, config),
     );
     return result.data;
   }
 
   async loadFile(cid: string): Promise<string> {
+    this._logger.debug(`load json ${cid}`);
     const result = await firstValueFrom(
       this.http.post(this._host + `/api/v0/cat?arg=${cid}`, undefined, {
         responseType: 'arraybuffer',
