@@ -15,6 +15,7 @@ export class LoginService {
     signature: string,
     account: string,
     message: string,
+    pubkey?: string,
   ): Promise<{
     token: string;
     expiresIn: number;
@@ -22,10 +23,17 @@ export class LoginService {
     if (!this._isValidLoginMessage(message)) {
       throw new Error('invalid message');
     }
+    if (pubkey) {
+      if (
+        !(await this.chainService.isPkAccountMatched(chain, pubkey, account))
+      ) {
+        throw new Error('account and pubkey is not matched.');
+      }
+    }
     const isValid = await this.chainService.isValidSignature(
       chain,
       signature,
-      account,
+      pubkey || account,
       message,
     );
     const expiresIn = 60 * 60 * 24 * 7; // 7days

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StoryModule } from 'src/story/story.module';
-import { TezosGhostTestnetService } from './tezos-ghost-testnet/tezos-ghost-testnet.service';
+import { TezosJakartanetService } from './tezos-jakartanet/tezos-jakartanet.service';
 
 @Module({
   imports: [ConfigModule, StoryModule],
-  providers: [TezosGhostTestnetService],
-  exports: [TezosGhostTestnetService],
+  providers: [TezosJakartanetService],
+  exports: [TezosJakartanetService],
 })
 export class TezosModule {}

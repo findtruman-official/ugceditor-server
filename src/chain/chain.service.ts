@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { KlaytnBaobabService } from './klaytn/klaytn-baobab/klaytn-baobab.service';
 import { SolanaDevnetService } from './solana/solana-devnet/solana-devnet.service';
-import { TezosGhostTestnetService } from './tezos/tezos-ghost-testnet/tezos-ghost-testnet.service';
+import { TezosJakartanetService } from './tezos/tezos-jakartanet/tezos-jakartanet.service';
 
 type ChainInfo = {
   name: string;
@@ -24,7 +24,7 @@ export class ChainService {
 
   constructor(
     solDevChain: SolanaDevnetService,
-    tezGhostTest: TezosGhostTestnetService,
+    tezGhostTest: TezosJakartanetService,
     klaytnBaobab: KlaytnBaobabService,
   ) {
     this._impls = [solDevChain, tezGhostTest, klaytnBaobab];
@@ -56,6 +56,18 @@ export class ChainService {
       findsAddress: chainIntegr.findsAddress,
       taskModule: chainIntegr.taskModule,
     };
+  }
+
+  async isPkAccountMatched(
+    chain: string,
+    pubkey: string,
+    account: string,
+  ): Promise<boolean> {
+    const chainIntegr = this._getChainIntegr(chain);
+    if (!chainIntegr || !chainIntegr.isPkAccountMatched) {
+      return false;
+    }
+    return await chainIntegr.isPkAccountMatched(pubkey, account);
   }
 
   async isValidSignature(

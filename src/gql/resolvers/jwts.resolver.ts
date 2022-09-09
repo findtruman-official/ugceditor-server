@@ -14,7 +14,14 @@ export class JwtsResolver {
     @Args('account') account: string,
     @Args('message') message: string,
     @Args('signature') signature: string,
+    @Args('pubkey', { nullable: true }) pubkey?: string,
   ): Promise<Jwt> {
-    return await this.loginSvc.login(chain, signature, account, message);
+    return await this.loginSvc.login(
+      chain,
+      signature,
+      account,
+      message,
+      pubkey,
+    );
   }
 }

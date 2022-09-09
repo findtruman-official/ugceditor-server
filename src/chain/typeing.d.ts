@@ -33,6 +33,11 @@ declare namespace Chain {
     taskModule: TaskModuleType;
 
     /**
+     * Verify the account is from publickey
+     */
+    isPkAccountMatched?: (pk: string, account: string) => Promise<boolean>;
+
+    /**
      * verify the signature is account signed
      */
     isValidSignature: (params: IsValidSignatureParams) => Promise<boolean>;
