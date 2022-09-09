@@ -55,10 +55,9 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
   async isValidSignature(
     params: Chain.IsValidSignatureParams,
   ): Promise<boolean> {
-    console.log(params);
     return verifySignature(
       // messageBytes
-      params.message,
+      Buffer.from(params.message).toString('hex'),
       // publicKey
       params.account,
       // signature
