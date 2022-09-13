@@ -69,7 +69,20 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     metadatas: Chain.GeneralMetadata[],
   ): Promise<Chain.MetadataJsonFile[]> {
     // TODO transform nft metatdata to tezos standard
-    return [];
+    return metadatas.map((md) => ({
+      item: md,
+      json: {
+        name: unescape(md.name),
+        symbol: 'Story',
+        description: unescape(md.description),
+        image: md.image,
+        artifactUri: md.image,
+        displayUri: md.image,
+        decimals: 0,
+        isBooleanAmount: true,
+        interfaces: ["TZIP-007-2021-04-17", "TZIP-016-2021-04-17", "TZIP-21"],
+      },
+    }));
   }
 
   async getStory(chainStoryId: string): Promise<Chain.Story> {
@@ -102,7 +115,7 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
 
     return {
       saleAddr: this.factoryAddress,
-      name,
+      name: unescape(name),
       uriPrefix,
       type: '721',
       price: price.toString(),
@@ -194,7 +207,7 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
               chain: this.chain,
               chainStoryId: storyId.toString(),
               nftSaleAddr: this.factoryAddress,
-              name: sale.name,
+              name: unescape(sale.name),
               uriPrefix: sale.uriPrefix,
               type: NftType.NON_FUNGIBLE_TOKEN,
               price: sale.price,
