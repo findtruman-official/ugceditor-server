@@ -219,7 +219,7 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
           } else {
             if (
               existedSaleInDb.sold !== sale.sold ||
-              existedSaleInDb.authorClaimed !== existedSaleInDb.sold
+              existedSaleInDb.authorClaimed !== sale.authorClaimed
             ) {
               // state changed , will update sale
               toUpdateSales.push({
