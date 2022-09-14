@@ -186,7 +186,7 @@ export class StoryService {
   ): Promise<NftSale[]> {
     return await this.datasource.transaction(async (em) => {
       const saleRepo = em.getRepository(NftSale);
-
+      const toSave: NftSale[] = [];
       for (const { chain, chainStoryId, nftSaleAddr, ...data } of sales) {
         const obj = await saleRepo.findOne({
           where: {
@@ -196,7 +196,6 @@ export class StoryService {
           },
         });
         if (!obj) continue;
-        const toSave: NftSale[] = [];
         if (
           obj.authorClaimed !== data.authorClaimed ||
           obj.authorReserved !== data.authorReserved ||
@@ -210,8 +209,8 @@ export class StoryService {
           Object.assign(obj, data);
           toSave.push(obj);
         }
-        return await saleRepo.save(toSave);
       }
+      return await saleRepo.save(toSave);
     });
   }
 
