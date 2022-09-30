@@ -155,7 +155,7 @@ export class StoryChainTaskService {
 
   async listTasks(opts: {
     chain: string;
-    chainStoryId: string;
+    chainStoryId?: string;
   }): Promise<StoryChainTask[]> {
     return await this._taskRepo.find({
       where: opts,
@@ -167,8 +167,8 @@ export class StoryChainTaskService {
 
   async listSubmits(opts: {
     chain: string;
-    chainStoryId: string;
-    chainTaskId: string;
+    chainStoryId?: string;
+    chainTaskId?: string;
   }): Promise<StoryChainTaskSubmit[]> {
     return await this._submitRepo.find({
       where: {

@@ -5,12 +5,16 @@ import { verifySignature } from '@taquito/utils';
 import { Key } from 'sotez';
 import { ContractProvider, TezosToolkit } from '@taquito/taquito';
 import { NftType } from 'src/story/entities/nft-sale.entity';
+import { StoryChainTaskService } from 'src/story-chain-task/story-chain-task.service';
+import { chain2ett_SubmitStatus, chain2ett_TaskStatus } from '../../utils';
+import { StoryChainTaskStatus } from '../../../story-chain-task/entities/story-chain-task.entity';
+import { StoryChainTaskSubmitStatus } from '../../../story-chain-task/entities/story-chain-task-submit.entity';
 
 @Injectable()
 export class TezosJakartanetService implements Chain.ChainIntegration {
   public chain = 'tezos-jakartanet';
   public name = 'Tezos(Jakartanet)';
-  public taskModule: Chain.TaskModuleType = 'basic';
+  public taskModule: Chain.TaskModuleType = 'chain';
   public factoryAddress = '';
   public findsAddress = '';
   public enabled = true;
@@ -22,6 +26,7 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
   constructor(
     private readonly _storySvc: StoryService,
     private readonly _configSvc: ConfigService,
+    private readonly _storyTaskSvc: StoryChainTaskService,
   ) {}
 
   async onModuleInit() {
@@ -42,6 +47,9 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     if (enableSync) {
       this.syncChainData().catch((err) => {
         this.logger.error(`sync chain data failed`, err);
+      });
+      this.syncChainTaskData().catch((err) => {
+        this.logger.error(`sync chain task data failed`, err);
       });
     }
   }
@@ -68,7 +76,6 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
   async formatGeneralMetadatas(
     metadatas: Chain.GeneralMetadata[],
   ): Promise<Chain.MetadataJsonFile[]> {
-    // TODO transform nft metatdata to tezos standard
     return metadatas.map((md) => ({
       item: md,
       json: {
@@ -130,7 +137,28 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     chainStoryId: string,
     chainTaskId: string,
   ): Promise<Chain.Task> {
-    return null;
+    const storage = await this.factory.storage();
+    const searchTaskKey = {
+      storyId: parseInt(chainStoryId),
+      taskId: parseInt(chainTaskId)
+    };
+    const data = await storage['task'].get(searchTaskKey);
+    if (!data) return null;
+    const {
+      cid,
+      creator,
+      nft,
+      rewardNfts,
+      status
+    } = data;
+    return {
+      id: chainTaskId,
+      cid,
+      creator,
+      nft,
+      rewardNfts: rewardNfts.map((v) => v.toString()),
+      status
+    };
   }
 
   async getSubmit(
@@ -138,14 +166,125 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     chainTaskId: string,
     chainSubmitId: string,
   ): Promise<Chain.Submit> {
-    return null;
+    const storage = await this.factory.storage();
+    const searchTaskKey = {
+      storyId: parseInt(chainStoryId),
+      taskId: parseInt(chainTaskId),
+      submitId: parseInt(chainSubmitId)
+    };
+    const data = await storage['taskSubmit'].get(searchTaskKey);
+    if (!data) return null;
+    const {
+      creator,
+      status,
+      cid
+    } = data;
+    return {
+      id: chainSubmitId,
+      cid,
+      creator,
+      status
+    };
+  }
+
+  private async syncChainTaskData() {
+    /**
+     * sync task and submit on chain every 1 minutes
+     */
+    const INTERVAL = 60 * 1000;
+
+    while (true) {
+      this.logger.debug(`[syncChainTask] start`);
+
+      const storyTasksInDb = await this._storyTaskSvc.listTasks({
+        chain: this.chain,
+      });
+      const storyTaskSubmitsInDb = await this._storyTaskSvc.listSubmits({
+        chain: this.chain,
+      });
+      this.logger.debug(
+        `[syncChainTask] ${storyTasksInDb.length} tasks & ${storyTaskSubmitsInDb.length} submits in db`,
+      );
+      const nextStoryId = await this.getNextStoryId();
+      for (let storyId = 1; storyId < nextStoryId; storyId++) {
+        const nextTaskId = await this.getNextTaskId(storyId.toString());
+        if (nextTaskId != null) {
+          for (let taskId = 1; taskId < nextTaskId; taskId++) {
+            // storyTask
+            const storyTaskInfo = await this.getTask(storyId.toString(), taskId.toString());
+            if (storyTaskInfo) {
+              const exitedStoryTaskInDb = storyTasksInDb.find(
+                (task) => task.chainTaskId === taskId.toString() && task.chainStoryId === storyId.toString(),
+              );
+              if (!exitedStoryTaskInDb){
+                const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
+                await this._storyTaskSvc.createTask({
+                  chain: this.chain,
+                  chainStoryId: storyId.toString(),
+                  chainTaskId: taskId.toString(),
+                  creator: storyTaskInfo.creator,
+                  nft: storyTaskInfo.nft,
+                  rewardNfts: storyTaskInfo.rewardNfts,
+                  cid: storyTaskInfo.cid,
+                  status: taskStatus,
+                });
+              } else {
+                const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
+                await this._storyTaskSvc.updateTask({
+                  chain: this.chain,
+                  chainStoryId: storyId.toString(),
+                  chainTaskId: taskId.toString(),
+                  cid: storyTaskInfo.cid,
+                  status: taskStatus
+                });
+              }
+            }
+            // storyTaskSubmit
+            const nextSubmitId = await this.getNextSubmitId(storyId.toString(), taskId.toString());
+            if (nextSubmitId > 1) {
+              for (let submitId = 1; submitId < nextSubmitId; submitId++){
+                const storyTaskSubmitInfo = await this.getSubmit(storyId.toString(), taskId.toString(), submitId.toString());
+                if (storyTaskSubmitInfo) {
+                  const exitedStoryTaskSubmitInDb = storyTaskSubmitsInDb.find(
+                    (submit) => submit.chainStoryId === storyId.toString() && submit.chainTaskId === taskId.toString() && submit.chainSubmitId === submitId.toString(),
+                  );
+                  if (!exitedStoryTaskSubmitInDb) {
+                    const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
+                    await this._storyTaskSvc.createSubmit({
+                      chain: this.chain,
+                      chainStoryId: storyId.toString(),
+                      chainTaskId: taskId.toString(),
+                      chainSubmitId: submitId.toString(),
+                      creator: storyTaskSubmitInfo.creator,
+                      cid: storyTaskSubmitInfo.cid,
+                      status: taskSubmitStatus,
+                    });
+                  } else {
+                    const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
+                    await this._storyTaskSvc.updateSubmit({
+                      chain: this.chain,
+                      chainStoryId: storyId.toString(),
+                      chainTaskId: taskId.toString(),
+                      chainSubmitId: submitId.toString(),
+                      status: taskSubmitStatus,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      this.logger.debug(`[syncChainTask] done`);
+      await new Promise((res) => setTimeout(res, INTERVAL));
+    }
   }
 
   private async syncChainData() {
     /**
      * sync all data on chain every 10 minutes
      */
-    const INTERVAL = 10 * 60 * 1000;
+    const INTERVAL = 100 * 60 * 1000;
 
     while (true) {
       this.logger.debug(`[sync] start`);
@@ -253,5 +392,47 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     const storage = await this.factory.storage();
     const data = await storage['nextId'];
     return parseInt(data.toString());
+  }
+
+  private async getNextTaskId(storyId: string): Promise<number> {
+    const storage = await this.factory.storage();
+    const data = await storage['storyTasks'].get(parseInt(storyId));
+    if (!data) return null;
+    return parseInt(data.nextTaskId.toString());
+  }
+
+  private async changeTaskStatus(taskStatus: string): Promise<StoryChainTaskStatus> {
+    if (taskStatus == "TODO") {
+      return StoryChainTaskStatus.Todo;
+    }
+    if (taskStatus == "CANCELLED") {
+      return StoryChainTaskStatus.Cancelled;
+    }
+    if (taskStatus == "DONE") {
+      return StoryChainTaskStatus.Done;
+    }
+  }
+
+  private async getNextSubmitId(storyId: string, taskId: string): Promise<number> {
+    const storage = await this.factory.storage();
+    const searchTaskKey = {
+      storyId: parseInt(storyId),
+      taskId: parseInt(taskId)
+    };
+    const data = await storage['task'].get(searchTaskKey);
+    if (!data) return null;
+    return parseInt(data.nextSubmitId.toString());
+  }
+
+  private async changeTaskSubmitStatus(taskSubmitStatus: string): Promise<StoryChainTaskSubmitStatus> {
+    if (taskSubmitStatus == "PEDING") {
+      return StoryChainTaskSubmitStatus.PENDING;
+    }
+    if (taskSubmitStatus == "APPROVED") {
+      return StoryChainTaskSubmitStatus.APPROVED;
+    }
+    if (taskSubmitStatus == "WITHDRAWED") {
+      return StoryChainTaskSubmitStatus.WITHDRAWED;
+    }
   }
 }
