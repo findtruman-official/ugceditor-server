@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { IcService } from './ic/ic.service';
 import { KlaytnBaobabService } from './klaytn/klaytn-baobab/klaytn-baobab.service';
 import { SolanaDevnetService } from './solana/solana-devnet/solana-devnet.service';
 import { TezosJakartanetService } from './tezos/tezos-jakartanet/tezos-jakartanet.service';
@@ -26,8 +27,9 @@ export class ChainService {
     solDevChain: SolanaDevnetService,
     tezGhostTest: TezosJakartanetService,
     klaytnBaobab: KlaytnBaobabService,
+    ic: IcService,
   ) {
-    this._impls = [solDevChain, tezGhostTest, klaytnBaobab];
+    this._impls = [solDevChain, tezGhostTest, klaytnBaobab, ic];
   }
 
   async onModuleInit() {
