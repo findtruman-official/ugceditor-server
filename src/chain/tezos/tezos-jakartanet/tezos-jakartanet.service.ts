@@ -191,92 +191,98 @@ export class TezosJakartanetService implements Chain.ChainIntegration {
     /**
      * sync task and submit on chain every 1 minutes
      */
-    const INTERVAL = 60 * 1000;
-
+    const INTERVALS = 60 * 1000;
     while (true) {
-      this.logger.debug(`[syncChainTask] start`);
+      try {
+        this.logger.debug(`[syncChainTask] start`);
 
-      const storyTasksInDb = await this._storyTaskSvc.listTasks({
-        chain: this.chain,
-      });
-      const storyTaskSubmitsInDb = await this._storyTaskSvc.listSubmits({
-        chain: this.chain,
-      });
-      this.logger.debug(
-        `[syncChainTask] ${storyTasksInDb.length} tasks & ${storyTaskSubmitsInDb.length} submits in db`,
-      );
-      const nextStoryId = await this.getNextStoryId();
-      for (let storyId = 1; storyId < nextStoryId; storyId++) {
-        const nextTaskId = await this.getNextTaskId(storyId.toString());
-        if (nextTaskId != null) {
-          for (let taskId = 1; taskId < nextTaskId; taskId++) {
-            // storyTask
-            const storyTaskInfo = await this.getTask(storyId.toString(), taskId.toString());
-            if (storyTaskInfo) {
-              const exitedStoryTaskInDb = storyTasksInDb.find(
-                (task) => task.chainTaskId === taskId.toString() && task.chainStoryId === storyId.toString(),
-              );
-              if (!exitedStoryTaskInDb){
-                const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
-                await this._storyTaskSvc.createTask({
-                  chain: this.chain,
-                  chainStoryId: storyId.toString(),
-                  chainTaskId: taskId.toString(),
-                  creator: storyTaskInfo.creator,
-                  nft: storyTaskInfo.nft,
-                  rewardNfts: storyTaskInfo.rewardNfts,
-                  cid: storyTaskInfo.cid,
-                  status: taskStatus,
-                });
-              } else {
-                const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
-                await this._storyTaskSvc.updateTask({
-                  chain: this.chain,
-                  chainStoryId: storyId.toString(),
-                  chainTaskId: taskId.toString(),
-                  cid: storyTaskInfo.cid,
-                  status: taskStatus
-                });
+        const storyTasksInDb = await this._storyTaskSvc.listTasks({
+          chain: this.chain,
+        });
+        const storyTaskSubmitsInDb = await this._storyTaskSvc.listSubmits({
+          chain: this.chain,
+        });
+        this.logger.debug(
+          `[syncChainTask] ${storyTasksInDb.length} tasks & ${storyTaskSubmitsInDb.length} submits in db`,
+        );
+        const nextStoryId = await this.getNextStoryId();
+        for (let storyId = 1; storyId < nextStoryId; storyId++) {
+          const nextTaskId = await this.getNextTaskId(storyId.toString());
+          if (nextTaskId != null) {
+            for (let taskId = 1; taskId < nextTaskId; taskId++) {
+              // storyTask
+              const storyTaskInfo = await this.getTask(storyId.toString(), taskId.toString());
+              if (storyTaskInfo) {
+                const exitedStoryTaskInDb = storyTasksInDb.find(
+                  (task) => task.chainTaskId === taskId.toString() && task.chainStoryId === storyId.toString(),
+                );
+                if (!exitedStoryTaskInDb){
+                  const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
+                  await this._storyTaskSvc.createTask({
+                    chain: this.chain,
+                    chainStoryId: storyId.toString(),
+                    chainTaskId: taskId.toString(),
+                    creator: storyTaskInfo.creator,
+                    nft: storyTaskInfo.nft,
+                    rewardNfts: storyTaskInfo.rewardNfts,
+                    cid: storyTaskInfo.cid,
+                    status: taskStatus,
+                  });
+                } else {
+                  const taskStatus = await this.changeTaskStatus(storyTaskInfo.status);
+                  await this._storyTaskSvc.updateTask({
+                    chain: this.chain,
+                    chainStoryId: storyId.toString(),
+                    chainTaskId: taskId.toString(),
+                    cid: storyTaskInfo.cid,
+                    status: taskStatus
+                  });
+                }
               }
-            }
-            // storyTaskSubmit
-            const nextSubmitId = await this.getNextSubmitId(storyId.toString(), taskId.toString());
-            if (nextSubmitId > 1) {
-              for (let submitId = 1; submitId < nextSubmitId; submitId++){
-                const storyTaskSubmitInfo = await this.getSubmit(storyId.toString(), taskId.toString(), submitId.toString());
-                if (storyTaskSubmitInfo) {
-                  const exitedStoryTaskSubmitInDb = storyTaskSubmitsInDb.find(
-                    (submit) => submit.chainStoryId === storyId.toString() && submit.chainTaskId === taskId.toString() && submit.chainSubmitId === submitId.toString(),
-                  );
-                  if (!exitedStoryTaskSubmitInDb) {
-                    const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
-                    await this._storyTaskSvc.createSubmit({
-                      chain: this.chain,
-                      chainStoryId: storyId.toString(),
-                      chainTaskId: taskId.toString(),
-                      chainSubmitId: submitId.toString(),
-                      creator: storyTaskSubmitInfo.creator,
-                      cid: storyTaskSubmitInfo.cid,
-                      status: taskSubmitStatus,
-                    });
-                  } else {
-                    const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
-                    await this._storyTaskSvc.updateSubmit({
-                      chain: this.chain,
-                      chainStoryId: storyId.toString(),
-                      chainTaskId: taskId.toString(),
-                      chainSubmitId: submitId.toString(),
-                      status: taskSubmitStatus,
-                    });
+              // storyTaskSubmit
+              const nextSubmitId = await this.getNextSubmitId(storyId.toString(), taskId.toString());
+              if (nextSubmitId > 1) {
+                for (let submitId = 1; submitId < nextSubmitId; submitId++){
+                  const storyTaskSubmitInfo = await this.getSubmit(storyId.toString(), taskId.toString(), submitId.toString());
+                  if (storyTaskSubmitInfo) {
+                    const exitedStoryTaskSubmitInDb = storyTaskSubmitsInDb.find(
+                      (submit) => submit.chainStoryId === storyId.toString() && submit.chainTaskId === taskId.toString() && submit.chainSubmitId === submitId.toString(),
+                    );
+                    if (!exitedStoryTaskSubmitInDb) {
+                      const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
+                      await this._storyTaskSvc.createSubmit({
+                        chain: this.chain,
+                        chainStoryId: storyId.toString(),
+                        chainTaskId: taskId.toString(),
+                        chainSubmitId: submitId.toString(),
+                        creator: storyTaskSubmitInfo.creator,
+                        cid: storyTaskSubmitInfo.cid,
+                        status: taskSubmitStatus,
+                      });
+                    } else {
+                      const taskSubmitStatus = await this.changeTaskSubmitStatus(storyTaskSubmitInfo.status);
+                      await this._storyTaskSvc.updateSubmit({
+                        chain: this.chain,
+                        chainStoryId: storyId.toString(),
+                        chainTaskId: taskId.toString(),
+                        chainSubmitId: submitId.toString(),
+                        status: taskSubmitStatus,
+                      });
+                    }
                   }
                 }
               }
             }
           }
         }
+        this.logger.debug(`[syncChainTask] done`);
       }
-      this.logger.debug(`[syncChainTask] done`);
-      await new Promise((res) => setTimeout(res, INTERVAL));
+      catch (e) {
+        this.logger.error(`sync Tezos chain task data failed`, e);
+      }
+      finally {
+        await new Promise((res) => setTimeout(res, INTERVALS));
+      }
     }
   }
 
