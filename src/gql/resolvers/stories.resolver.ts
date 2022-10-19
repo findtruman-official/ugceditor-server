@@ -178,6 +178,14 @@ export class StoriesResolver {
     @Args('author', { type: () => [String], nullable: true }) author: string[],
     @Args('sort', { type: () => StorySort, nullable: true }) sort: StorySort,
   ) {
+    const availableChainTypes = (await this._chainSvc.listChains()).map(
+      (c) => c.type,
+    );
+    if (chain === undefined) {
+      chain = availableChainTypes;
+    } else {
+      chain = chain.filter((ch) => availableChainTypes.includes(ch));
+    }
     return this._storySvc.listStories({
       chain,
       author,
