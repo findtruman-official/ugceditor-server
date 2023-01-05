@@ -3,6 +3,7 @@ import { IcService } from './ic/ic.service';
 import { KlaytnBaobabService } from './klaytn/klaytn-baobab/klaytn-baobab.service';
 import { SolanaDevnetService } from './solana/solana-devnet/solana-devnet.service';
 import { TezosJakartanetService } from './tezos/tezos-jakartanet/tezos-jakartanet.service';
+import { NearTestnetService } from './near/near-testnet/near-testnet.service';
 
 type ChainInfo = {
   name: string;
@@ -28,8 +29,9 @@ export class ChainService {
     tezGhostTest: TezosJakartanetService,
     klaytnBaobab: KlaytnBaobabService,
     ic: IcService,
+    nearTestnet: NearTestnetService,
   ) {
-    this._impls = [solDevChain, tezGhostTest, klaytnBaobab, ic];
+    this._impls = [solDevChain, tezGhostTest, klaytnBaobab, ic, nearTestnet];
   }
 
   async onModuleInit() {
