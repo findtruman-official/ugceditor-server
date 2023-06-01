@@ -9,7 +9,7 @@ import { NftType } from '../../../story/entities/nft-sale.entity';
 export class NearTestnetService implements Chain.ChainIntegration {
   public chain = 'near';
   public name = 'Near(testnet)';
-  public taskModule: Chain.TaskModuleType = 'basic';
+  public taskModule: Chain.TaskModuleType = 'chain';
   public factoryAddress = '';
   public findsAddress = '';
   public enabled = true;
