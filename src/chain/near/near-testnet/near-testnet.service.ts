@@ -11,7 +11,7 @@ import { StoryChainTaskSubmitStatus } from '../../../story-chain-task/entities/s
 @Injectable()
 export class NearTestnetService implements Chain.ChainIntegration {
   public chain = 'near';
-  public name = 'Near(testnet)';
+  public name = 'Near';
   public taskModule: Chain.TaskModuleType = 'chain';
   public factoryAddress = '';
   public findsAddress = '';
