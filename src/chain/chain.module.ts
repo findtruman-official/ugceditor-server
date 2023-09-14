@@ -6,9 +6,18 @@ import { TezosModule } from './tezos/tezos.module';
 import { KlaytnModule } from './klaytn/klaytn.module';
 import { IcModule } from './ic/ic.module';
 import { NearModule } from './near/near.module';
+import { IrisModule } from './iris/iris.module';
 
 @Module({
-  imports: [StoryModule, SolanaModule, TezosModule, KlaytnModule, IcModule, NearModule],
+  imports: [
+    StoryModule,
+    SolanaModule,
+    TezosModule,
+    KlaytnModule,
+    IcModule,
+    NearModule,
+    IrisModule,
+  ],
   providers: [ChainService],
   exports: [ChainService],
 })
