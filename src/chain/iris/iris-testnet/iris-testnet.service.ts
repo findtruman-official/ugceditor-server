@@ -10,6 +10,8 @@ import StoryNftAbi from '../story-nft.abi.json';
 import { ConfigService } from '@nestjs/config';
 import { StoryService } from 'src/story/story.service';
 import { NftType } from 'src/story/entities/nft-sale.entity';
+import { StoryChainTaskService } from 'src/story-chain-task/story-chain-task.service';
+import { chain2ett_SubmitStatus, chain2ett_TaskStatus } from 'src/chain/utils';
 
 @Injectable()
 export class IrisTestnetService implements Chain.ChainIntegration {
@@ -29,6 +31,7 @@ export class IrisTestnetService implements Chain.ChainIntegration {
   constructor(
     private readonly _configSvc: ConfigService,
     private readonly _storySvc: StoryService,
+    private readonly _chainTaskSvc: StoryChainTaskService,
   ) {}
 
   async onModuleInit() {
@@ -233,6 +236,36 @@ export class IrisTestnetService implements Chain.ChainIntegration {
             amount: claimAmount.toString(),
           });
         }
+        // 任务更新事件
+        const blockTaskUpdatedInfo = await factory.queryFilter(
+          'TaskUpdated',
+          start_block,
+          now_block,
+        );
+        for (let i = 0; i < blockTaskUpdatedInfo.length; i++) {
+          const taskStoryId = parseInt(blockTaskUpdatedInfo[i].topics[1]);
+          const taskId = parseInt(blockTaskUpdatedInfo[i].topics[2]);
+          await this.taskUpdatedEvent({
+            storyId: taskStoryId.toString(),
+            taskId: taskId.toString(),
+          });
+        }
+        // 提交更新事件
+        const blockSubmitUpdatedInfo = await factory.queryFilter(
+          'SubmitUpdated',
+          start_block,
+          now_block,
+        );
+        for (let i = 0; i < blockSubmitUpdatedInfo.length; i++) {
+          const submitStoryId = parseInt(blockSubmitUpdatedInfo[i].topics[1]);
+          const submitTaskId = parseInt(blockSubmitUpdatedInfo[i].topics[2]);
+          const submitId = parseInt(blockSubmitUpdatedInfo[i].topics[3]);
+          await this.submitUpdatedEvent({
+            storyId: submitStoryId.toString(),
+            taskId: submitTaskId.toString(),
+            submitId: submitId.toString(),
+          });
+        }
         start_block = now_block;
       } catch (err) {
         this._logger.error('listen failed, try next loop', err);
@@ -360,5 +393,85 @@ export class IrisTestnetService implements Chain.ChainIntegration {
     });
     obj.authorClaimed = (await this.getStoryNftSale(storyId)).authorClaimed;
     await this._storySvc.updateNftSales([obj]);
+  }
+
+  private async taskUpdatedEvent({
+    storyId,
+    taskId,
+  }: {
+    storyId: string;
+    taskId: string;
+  }) {
+    const obj = await this._chainTaskSvc.getTask({
+      chain: this.chain,
+      chainStoryId: storyId,
+      chainTaskId: taskId,
+    });
+    const data = await this.getTask(storyId, taskId);
+    if (obj) {
+      this._logger.debug(`update existed task`);
+      await this._chainTaskSvc.updateTask({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+
+        cid: data.cid,
+        status: chain2ett_TaskStatus(data.status),
+      });
+    } else {
+      this._logger.debug(`create new task`);
+      await this._chainTaskSvc.createTask({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+
+        creator: data.creator,
+        nft: data.nft,
+        rewardNfts: data.rewardNfts,
+        cid: data.cid,
+        status: chain2ett_TaskStatus(data.status),
+      });
+    }
+  }
+
+  private async submitUpdatedEvent({
+    storyId,
+    taskId,
+    submitId,
+  }: {
+    storyId: string;
+    taskId: string;
+    submitId: string;
+  }) {
+    const obj = await this._chainTaskSvc.getSubmit({
+      chain: this.chain,
+      chainStoryId: storyId,
+      chainTaskId: taskId,
+      chainSubmitId: submitId,
+    });
+    const data = await this.getSubmit(storyId, taskId, submitId);
+    if (obj) {
+      this._logger.debug(`update existed submit`);
+      await this._chainTaskSvc.updateSubmit({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+        chainSubmitId: submitId,
+
+        status: chain2ett_SubmitStatus(data.status),
+      });
+    } else {
+      this._logger.debug(`create new task`);
+      await this._chainTaskSvc.createSubmit({
+        chain: this.chain,
+        chainStoryId: storyId,
+        chainTaskId: taskId,
+        chainSubmitId: submitId,
+
+        creator: data.creator,
+        cid: data.cid,
+        status: chain2ett_SubmitStatus(data.status),
+      });
+    }
   }
 }
