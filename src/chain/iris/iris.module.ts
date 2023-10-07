@@ -7,5 +7,6 @@ import { StoryChainTaskModule } from 'src/story-chain-task/story-chain-task.modu
 @Module({
   imports: [ConfigModule, StoryModule, StoryChainTaskModule],
   providers: [IrisTestnetService],
+  exports: [IrisTestnetService],
 })
 export class IrisModule {}

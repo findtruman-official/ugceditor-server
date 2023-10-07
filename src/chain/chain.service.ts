@@ -4,6 +4,7 @@ import { KlaytnBaobabService } from './klaytn/klaytn-baobab/klaytn-baobab.servic
 import { SolanaDevnetService } from './solana/solana-devnet/solana-devnet.service';
 import { TezosJakartanetService } from './tezos/tezos-jakartanet/tezos-jakartanet.service';
 import { NearTestnetService } from './near/near-testnet/near-testnet.service';
+import { IrisTestnetService } from './iris/iris-testnet/iris-testnet.service';
 
 type ChainInfo = {
   name: string;
@@ -30,8 +31,16 @@ export class ChainService {
     klaytnBaobab: KlaytnBaobabService,
     ic: IcService,
     nearTestnet: NearTestnetService,
+    irisTestnet: IrisTestnetService,
   ) {
-    this._impls = [solDevChain, tezGhostTest, klaytnBaobab, ic, nearTestnet];
+    this._impls = [
+      solDevChain,
+      tezGhostTest,
+      klaytnBaobab,
+      ic,
+      nearTestnet,
+      irisTestnet,
+    ];
   }
 
   async onModuleInit() {
