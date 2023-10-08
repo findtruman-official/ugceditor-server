@@ -18,7 +18,7 @@ import { chain2ett_SubmitStatus, chain2ett_TaskStatus } from 'src/chain/utils';
 export class IrisTestnetService implements Chain.ChainIntegration {
   public chain = 'iris';
   public name = 'iris';
-  public taskModule: Chain.TaskModuleType = 'chain';
+  public taskModule: Chain.TaskModuleType = 'basic';
   public factoryAddress = '';
   public findsAddress = '';
   public enabled = true;
