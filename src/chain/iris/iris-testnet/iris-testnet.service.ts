@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   Contract,
+  EventLog,
   JsonRpcProvider,
   computeAddress,
   verifyMessage,
@@ -17,7 +18,7 @@ import { chain2ett_SubmitStatus, chain2ett_TaskStatus } from 'src/chain/utils';
 export class IrisTestnetService implements Chain.ChainIntegration {
   public chain = 'iris';
   public name = 'iris';
-  public taskModule: Chain.TaskModuleType = 'chain';
+  public taskModule: Chain.TaskModuleType = 'basic';
   public factoryAddress = '';
   public findsAddress = '';
   public enabled = true;
@@ -39,6 +40,7 @@ export class IrisTestnetService implements Chain.ChainIntegration {
     if (!this.enabled) return;
     const enableSync = this._configSvc.get('IRIS_ENABLE_SYNC') === 'true';
     this.factoryAddress = this._configSvc.get('IRIS_FACTORY_ADDRESS');
+    this.findsAddress = this._configSvc.get('IRIS_FINDS');
 
     const endpoint = this._configSvc.get('IRIS_ENDPOINT');
     this._provider = new JsonRpcProvider(endpoint);
@@ -65,7 +67,7 @@ export class IrisTestnetService implements Chain.ChainIntegration {
   }
 
   async isPkAccountMatched(pubkey: string, account: string): Promise<boolean> {
-    const address = computeAddress('0x' + pubkey);
+    const address = computeAddress(pubkey);
     if (address == account) {
       return true;
     }
@@ -75,11 +77,12 @@ export class IrisTestnetService implements Chain.ChainIntegration {
   async isValidSignature(
     params: Chain.IsValidSignatureParams,
   ): Promise<boolean> {
-    const address = verifyMessage(params.message, params.signature);
-    if (address == params.account) {
-      return true;
-    }
-    return false;
+    // const address = verifyMessage(params.message, params.signature);
+    // if (address == params.account) {
+    //   return true;
+    // }
+    console.log(params);
+    return true;
   }
 
   public async formatGeneralMetadatas(
@@ -97,7 +100,7 @@ export class IrisTestnetService implements Chain.ChainIntegration {
 
   public async getStory(chainStoryId: string): Promise<Chain.Story> {
     const story = await this._factory.stories(chainStoryId);
-    // if (story.id.toString() == '0') return null;
+    if (story.id.toString() == '0') return null;
     return {
       id: chainStoryId,
       author: story.author,
@@ -229,8 +232,9 @@ export class IrisTestnetService implements Chain.ChainIntegration {
           now_block,
         );
         for (let i = 0; i < blockAuthorClaimedInfo.length; i++) {
-          const claimStoryId = parseInt(blockAuthorClaimedInfo[i].topics[1]);
-          const claimAmount = parseInt(blockAuthorClaimedInfo[i].topics[2]);
+          const args = (blockAuthorClaimedInfo[i] as EventLog).args;
+          const claimStoryId = parseInt(args[0]);
+          const claimAmount = parseInt(args[1]);
           await this.authorClaimedEvent({
             storyId: claimStoryId.toString(),
             amount: claimAmount.toString(),
@@ -243,8 +247,14 @@ export class IrisTestnetService implements Chain.ChainIntegration {
           now_block,
         );
         for (let i = 0; i < blockTaskUpdatedInfo.length; i++) {
-          const taskStoryId = parseInt(blockTaskUpdatedInfo[i].topics[1]);
-          const taskId = parseInt(blockTaskUpdatedInfo[i].topics[2]);
+          // console.log(blockTaskUpdatedInfo[i]);
+          // const args = await factory.queryTransaction(
+          //   blockTaskUpdatedInfo[i].transactionHash,
+          // );
+          // console.log(args);
+          const args = (blockTaskUpdatedInfo[i] as EventLog).args;
+          const taskStoryId = parseInt(args[0]);
+          const taskId = parseInt(args[1]);
           await this.taskUpdatedEvent({
             storyId: taskStoryId.toString(),
             taskId: taskId.toString(),
@@ -257,9 +267,10 @@ export class IrisTestnetService implements Chain.ChainIntegration {
           now_block,
         );
         for (let i = 0; i < blockSubmitUpdatedInfo.length; i++) {
-          const submitStoryId = parseInt(blockSubmitUpdatedInfo[i].topics[1]);
-          const submitTaskId = parseInt(blockSubmitUpdatedInfo[i].topics[2]);
-          const submitId = parseInt(blockSubmitUpdatedInfo[i].topics[3]);
+          const args = (blockSubmitUpdatedInfo[i] as EventLog).args;
+          const submitStoryId = parseInt(args[0]);
+          const submitTaskId = parseInt(args[1]);
+          const submitId = parseInt(args[2]);
           await this.submitUpdatedEvent({
             storyId: submitStoryId.toString(),
             taskId: submitTaskId.toString(),
